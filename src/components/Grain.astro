@@ -1,0 +1,43 @@
+---
+/**
+ * Film grain. An inline SVG feTurbulence rasterised by the compositor —
+ * no image request, no JS, and it sits on its own layer so it never
+ * triggers paint on scroll.
+ *
+ * This is what stops a flat near-black page from looking like an empty div.
+ */
+---
+
+<div class="grain" aria-hidden="true"></div>
+
+<style>
+  .grain {
+    position: fixed;
+    inset: -50%;
+    width: 200%;
+    height: 200%;
+    pointer-events: none;
+    z-index: 100;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+    will-change: transform;
+    animation: grain-shift 6s steps(6) infinite;
+  }
+
+  @keyframes grain-shift {
+    0% { transform: translate(0, 0); }
+    17% { transform: translate(-2%, 1%); }
+    33% { transform: translate(1%, -2%); }
+    50% { transform: translate(-1%, 2%); }
+    67% { transform: translate(2%, 1%); }
+    83% { transform: translate(-2%, -1%); }
+    100% { transform: translate(0, 0); }
+  }
+
+  /* Static grain still reads as texture; only the drift is motion. */
+  @media (prefers-reduced-motion: reduce) {
+    .grain {
+      animation: none;
+    }
+  }
+</style>

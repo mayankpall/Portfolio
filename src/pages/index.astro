@@ -1,0 +1,682 @@
+---
+import Base from '../layouts/Base.astro';
+import Motion from '../components/Motion.astro';
+import Hero3D from '../components/Hero3D.astro';
+import Contact from '../components/Contact.astro';
+import { profile } from '../data/profile';
+import { projects } from '../data/projects';
+import { achievements } from '../data/achievements';
+import leetcode from '../data/leetcode.json';
+---
+
+<Base>
+  <!-- ==================== HERO ==================== -->
+  <section class="hero" id="top">
+    <!-- The poster sits underneath the canvas. On phones it is the whole
+         artwork; three.js is never downloaded there. -->
+    <div class="hero__poster" aria-hidden="true"></div>
+    <Hero3D />
+
+    <div class="wrap hero__inner">
+      <p class="hero__status line-mask">
+        <span>
+          {profile.status.available && <i class="dot" aria-hidden="true"></i>}
+          {profile.status.label}
+        </span>
+      </p>
+
+      <h1 class="display hero__title">
+        <span class="line-mask"><span>Mayank</span></span>
+        <span class="line-mask" style="--reveal-delay:90ms"><span>Pal<i class="hero__stop"></i></span></span>
+      </h1>
+
+      <div class="hero__foot">
+        <p class="hero__role line-mask" style="--reveal-delay:180ms">
+          <span>{profile.role}</span>
+        </p>
+        <p class="hero__pitch reveal" style="--reveal-delay:260ms">
+          {profile.positioning}
+        </p>
+      </div>
+    </div>
+
+    <a class="hero__scroll" href="#about" aria-label="Scroll to content">
+      <span class="eyebrow">Scroll</span>
+      <span class="hero__scroll-line" aria-hidden="true"></span>
+    </a>
+  </section>
+
+  <!-- ==================== ABOUT / INDEX ==================== -->
+  <section class="section" id="about">
+    <div class="wrap">
+      <hr class="rule reveal" />
+      <div class="idx">
+        <p class="eyebrow reveal">01 — Index</p>
+
+        <div class="idx__body">
+          <div class="idx__lede">
+            <p class="lede reveal">
+              I finished a Computer Science degree at {profile.education.institution} in
+              {profile.education.to} with a CGPA of {profile.education.cgpa}, and I have spent the
+              time since building things people actually use rather than things that demo well.
+            </p>
+            <div class="prose reveal" style="--reveal-delay:120ms">
+              <p>
+                Most of my work lately is <a class="ilink" href="/work/recurtrack">RecurTrack</a> — a
+                recurring-payments app for Indian households. The interesting part is not the stack,
+                it is a constraint: it never holds or moves money. That single decision keeps it
+                outside a regulatory framework it could not otherwise satisfy, and it shaped every
+                screen in the product.
+              </p>
+              <p>
+                Before that, real-time systems and interfaces — websockets, auth, and the unglamorous
+                testing that keeps money maths and billing cycles correct. I write unit and contract
+                tests because rounding errors in shared costs are the kind of bug users never forgive.
+              </p>
+              <p>
+                I also compete. A global rank of 35 out of 24,000 on CodeChef is not a job
+                qualification, but the habit behind it — reducing a messy problem to something with a
+                clean shape — is the same habit that makes production code smaller.
+              </p>
+            </div>
+          </div>
+
+          <dl class="stack reveal" style="--reveal-delay:200ms">
+            {
+              profile.stack.map((group) => (
+                <div class="stack__row">
+                  <dt class="eyebrow">{group.label}</dt>
+                  <dd>{group.items.join(' · ')}</dd>
+                </div>
+              ))
+            }
+          </dl>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== WORK ==================== -->
+  <section class="section work" id="work">
+    <div class="wrap">
+      <hr class="rule reveal" />
+      <header class="work__head">
+        <p class="eyebrow reveal">02 — Selected work</p>
+        <h2 class="h2 reveal" style="--reveal-delay:80ms">
+          Four things I<br /><span class="italic accent">shipped</span>.
+        </h2>
+      </header>
+
+      <ol class="work__list">
+        {
+          projects.map((p, i) => (
+            <li class="reveal" style={`--reveal-delay:${i * 70}ms`}>
+              <a class="proj" href={`/work/${p.slug}`}>
+                <span class="proj__index eyebrow">{p.index}</span>
+
+                <span class="proj__main">
+                  <span class="proj__title h3">{p.title}</span>
+                  <span class="proj__summary">{p.summary}</span>
+                  <span class="proj__stack">
+                    {p.stack.slice(0, 5).map((s) => (
+                      <span class="chip">{s}</span>
+                    ))}
+                  </span>
+                </span>
+
+                <span class="proj__meta">
+                  <span class="proj__year">{p.year}</span>
+                  <span class="proj__go" aria-hidden="true">↗</span>
+                </span>
+              </a>
+            </li>
+          ))
+        }
+      </ol>
+    </div>
+  </section>
+
+  <!-- ==================== PROOF ==================== -->
+  <section class="section" id="proof">
+    <div class="wrap">
+      <hr class="rule reveal" />
+      <header class="work__head">
+        <p class="eyebrow reveal">03 — Proof</p>
+        <h2 class="h2 reveal" style="--reveal-delay:80ms">Receipts.</h2>
+      </header>
+
+      <ul class="proof">
+        {
+          achievements.map((a, i) => {
+            const Tag = a.href ? 'a' : 'div';
+            return (
+              <li class="reveal" style={`--reveal-delay:${i * 70}ms`}>
+                <Tag
+                  class="proof__card"
+                  href={a.href}
+                  target={a.href ? '_blank' : undefined}
+                  rel={a.href ? 'noopener noreferrer' : undefined}
+                >
+                  <span class="proof__value display">
+                    {a.value}
+                    {a.unit && <sup class="proof__unit">{a.unit}</sup>}
+                  </span>
+                  <span class="proof__label h3">{a.label}</span>
+                  <span class="proof__detail">{a.detail}</span>
+                  {a.href && (
+                    <span class="proof__go eyebrow" aria-hidden="true">
+                      Verify ↗
+                    </span>
+                  )}
+                </Tag>
+              </li>
+            );
+          })
+        }
+      </ul>
+
+      <!-- Fetched at build time, baked into this HTML. No client request. -->
+      {
+        leetcode.total > 0 && (
+          <div class="lc reveal">
+            <div class="lc__head">
+              <p class="eyebrow">LeetCode</p>
+              <a class="lc__link" href={profile.links.leetcode} target="_blank" rel="noopener noreferrer">
+                @mayankpall ↗
+              </a>
+            </div>
+            <div class="lc__body">
+              <p class="lc__total display">{leetcode.total}</p>
+              <div class="lc__split">
+                <div class="lc__seg">
+                  <span class="lc__n">{leetcode.easy}</span>
+                  <span class="eyebrow">Easy</span>
+                </div>
+                <div class="lc__seg">
+                  <span class="lc__n">{leetcode.medium}</span>
+                  <span class="eyebrow">Medium</span>
+                </div>
+                <div class="lc__seg">
+                  <span class="lc__n">{leetcode.hard}</span>
+                  <span class="eyebrow">Hard</span>
+                </div>
+              </div>
+              <div class="lc__bar" aria-hidden="true">
+                <span style={`width:${(leetcode.easy / leetcode.total) * 100}%`} data-d="e"></span>
+                <span style={`width:${(leetcode.medium / leetcode.total) * 100}%`} data-d="m"></span>
+                <span style={`width:${(leetcode.hard / leetcode.total) * 100}%`} data-d="h"></span>
+              </div>
+              <p class="lc__note">
+                Problems solved. Updated automatically on every deploy
+                {leetcode.fetchedAt && ` — last read ${leetcode.fetchedAt}`}.
+              </p>
+            </div>
+          </div>
+        )
+      }
+    </div>
+  </section>
+
+  <!-- ==================== CONTACT ==================== -->
+  <Contact />
+
+  <Motion />
+</Base>
+
+<style>
+  /* ==================== HERO ==================== */
+  .hero {
+    position: relative;
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding-block: 8rem 4rem;
+    overflow: hidden;
+  }
+
+  /* Poster: pure CSS, so it costs zero bytes and stays sharp at any size.
+     On mobile this *is* the hero artwork. */
+  .hero__poster {
+    position: absolute;
+    top: 50%;
+    right: -6%;
+    transform: translateY(-58%);
+    width: min(52vw, 620px);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 34% 30%, rgba(250, 250, 248, 0.5), transparent 42%),
+      radial-gradient(circle at 68% 72%, rgba(198, 80, 45, 0.55), transparent 55%),
+      radial-gradient(circle at 50% 50%, rgba(58, 32, 24, 0.9), rgba(8, 8, 10, 0.2) 70%);
+    filter: blur(46px);
+    opacity: 0.62;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+
+  .hero__inner {
+    position: relative;
+    z-index: 2;
+  }
+
+  .hero__status {
+    margin-bottom: clamp(2rem, 8vh, 5rem);
+  }
+  .hero__status span {
+    font-family: var(--mono);
+    font-size: var(--t-micro);
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--ember);
+    display: inline-block;
+    flex: none;
+    box-shadow: 0 0 0 0 var(--ember-soft);
+    animation: pulse 2.6s var(--ease) infinite;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(198, 80, 45, 0.5); }
+    70% { box-shadow: 0 0 0 9px rgba(198, 80, 45, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(198, 80, 45, 0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .dot { animation: none; }
+  }
+
+  .hero__title {
+    margin-bottom: clamp(2rem, 6vh, 4rem);
+  }
+
+  /* The full stop is the accent's first appearance. It earns its place. */
+  .hero__stop {
+    display: inline-block;
+    width: 0.11em;
+    height: 0.11em;
+    border-radius: 50%;
+    background: var(--ember);
+    margin-left: 0.06em;
+    vertical-align: baseline;
+  }
+
+  .hero__foot {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+    gap: clamp(1.5rem, 4vw, 4rem);
+    align-items: end;
+    border-top: 1px solid var(--rule);
+    padding-top: 1.75rem;
+  }
+
+  .hero__role span {
+    font-family: var(--mono);
+    font-size: var(--t-small);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--paper);
+  }
+
+  .hero__pitch {
+    color: var(--muted);
+    max-width: 46ch;
+    font-size: clamp(0.95rem, 1.1vw, 1.08rem);
+  }
+
+  .hero__scroll {
+    position: absolute;
+    bottom: 2rem;
+    right: var(--gutter);
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .hero__scroll-line {
+    width: 1px;
+    height: 54px;
+    background: linear-gradient(to bottom, var(--rule-strong), transparent);
+    position: relative;
+    overflow: hidden;
+  }
+  .hero__scroll-line::after {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    height: 40%;
+    background: var(--ember);
+    animation: trace 2.4s var(--ease) infinite;
+  }
+  @keyframes trace {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(250%); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hero__scroll-line::after { animation: none; opacity: 0.4; }
+  }
+
+  @media (max-width: 860px) {
+    .hero__foot {
+      grid-template-columns: 1fr;
+      align-items: start;
+      gap: 1rem;
+    }
+    .hero__scroll { display: none; }
+    .hero__poster {
+      right: -25%;
+      width: 90vw;
+      opacity: 0.45;
+    }
+  }
+
+  /* ==================== INDEX ==================== */
+  .idx {
+    display: grid;
+    grid-template-columns: minmax(0, 12rem) minmax(0, 1fr);
+    gap: clamp(1.5rem, 4vw, 4rem);
+    padding-top: 3rem;
+  }
+
+  .idx__body {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+    gap: clamp(2rem, 5vw, 5rem);
+  }
+
+  .idx__lede .prose {
+    margin-top: 2rem;
+  }
+
+  .ilink {
+    color: var(--paper);
+    border-bottom: 1px solid var(--rule-strong);
+    transition:
+      border-color var(--dur-fast) var(--ease),
+      color var(--dur-fast) var(--ease);
+  }
+  .ilink:hover {
+    color: var(--ember);
+    border-bottom-color: var(--ember);
+  }
+
+  .stack__row {
+    display: grid;
+    grid-template-columns: 7rem 1fr;
+    gap: 1rem;
+    padding-block: 0.9rem;
+    border-bottom: 1px solid var(--rule);
+    align-items: baseline;
+  }
+  .stack__row:first-child {
+    border-top: 1px solid var(--rule);
+  }
+  .stack__row dd {
+    font-size: var(--t-small);
+    color: var(--muted);
+    line-height: 1.7;
+  }
+
+  @media (max-width: 1000px) {
+    .idx,
+    .idx__body {
+      grid-template-columns: 1fr;
+    }
+    .idx__body { gap: 3rem; }
+  }
+  @media (max-width: 520px) {
+    .stack__row { grid-template-columns: 1fr; gap: 0.35rem; }
+  }
+
+  /* ==================== WORK ==================== */
+  .work__head {
+    padding-top: 3rem;
+    margin-bottom: clamp(2.5rem, 7vh, 5rem);
+    display: grid;
+    grid-template-columns: minmax(0, 12rem) minmax(0, 1fr);
+    gap: clamp(1.5rem, 4vw, 4rem);
+    align-items: start;
+  }
+  @media (max-width: 1000px) {
+    .work__head { grid-template-columns: 1fr; gap: 1.5rem; }
+  }
+
+  .work__list {
+    list-style: none;
+  }
+
+  .proj {
+    display: grid;
+    grid-template-columns: 4rem minmax(0, 1fr) 7rem;
+    gap: clamp(1rem, 3vw, 3rem);
+    padding-block: clamp(1.75rem, 4vh, 2.75rem);
+    border-top: 1px solid var(--rule);
+    align-items: start;
+    position: relative;
+    transition: border-color var(--dur-fast) var(--ease);
+  }
+  .work__list li:last-child .proj {
+    border-bottom: 1px solid var(--rule);
+  }
+
+  /* A wash that wipes in from the left on hover — the row lights up
+     rather than lifting. Lifting cards is the template look. */
+  .proj::before {
+    content: '';
+    position: absolute;
+    inset: 0 calc(var(--gutter) * -0.4);
+    background: linear-gradient(90deg, var(--ember-soft), transparent 70%);
+    opacity: 0;
+    transition: opacity var(--dur-fast) var(--ease);
+    pointer-events: none;
+  }
+  .proj:hover::before,
+  .proj:focus-visible::before {
+    opacity: 1;
+  }
+  .proj:hover {
+    border-color: var(--rule-strong);
+  }
+
+  .proj__index {
+    padding-top: 0.4rem;
+  }
+
+  .proj__title {
+    display: block;
+    transition: transform var(--dur-fast) var(--ease);
+  }
+  .proj:hover .proj__title {
+    transform: translateX(6px);
+  }
+
+  .proj__summary {
+    display: block;
+    color: var(--muted);
+    margin-top: 0.5rem;
+    max-width: 52ch;
+    font-size: var(--t-small);
+  }
+
+  .proj__stack {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 1rem;
+  }
+  .chip {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted-dim);
+    border: 1px solid var(--rule);
+    padding: 0.25rem 0.55rem;
+    border-radius: 2px;
+  }
+
+  .proj__meta {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    font-family: var(--mono);
+    font-size: var(--t-micro);
+    color: var(--muted-dim);
+    padding-top: 0.4rem;
+  }
+  .proj__go {
+    font-size: 1rem;
+    transition: transform var(--dur-fast) var(--ease);
+  }
+  .proj:hover .proj__go {
+    transform: translate(3px, -3px);
+    color: var(--ember);
+  }
+
+  @media (max-width: 720px) {
+    .proj {
+      grid-template-columns: 2.5rem minmax(0, 1fr);
+      gap: 1rem;
+    }
+    .proj__meta {
+      grid-column: 2;
+      justify-content: flex-start;
+      gap: 1.5rem;
+      padding-top: 0.75rem;
+    }
+  }
+
+  /* ==================== PROOF ==================== */
+  .proof {
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+  }
+
+  .proof__card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--ink);
+    padding: clamp(1.5rem, 3vw, 2.25rem);
+    transition: background var(--dur-fast) var(--ease);
+  }
+  a.proof__card:hover {
+    background: var(--ink-raised);
+  }
+
+  .proof__value {
+    font-size: clamp(3rem, 6vw, 5rem);
+    line-height: 0.9;
+    color: var(--paper);
+  }
+  .proof__unit {
+    font-size: 0.34em;
+    vertical-align: super;
+    color: var(--ember);
+    margin-left: 0.04em;
+  }
+
+  .proof__label {
+    margin-top: 1.5rem;
+    font-size: 1rem;
+  }
+  .proof__detail {
+    margin-top: 0.4rem;
+    font-size: var(--t-small);
+    color: var(--muted);
+    flex: 1;
+  }
+  .proof__go {
+    margin-top: 1.25rem;
+    color: var(--muted-dim);
+    transition: color var(--dur-fast) var(--ease);
+  }
+  a.proof__card:hover .proof__go {
+    color: var(--ember);
+  }
+
+  /* ---- LeetCode panel ---- */
+  .lc {
+    margin-top: 1px;
+    border: 1px solid var(--rule);
+    border-top: 0;
+    padding: clamp(1.5rem, 3vw, 2.25rem);
+  }
+  .lc__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .lc__link {
+    font-family: var(--mono);
+    font-size: var(--t-micro);
+    color: var(--muted);
+    transition: color var(--dur-fast) var(--ease);
+  }
+  .lc__link:hover { color: var(--ember); }
+
+  .lc__body {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.75rem clamp(2rem, 5vw, 4rem);
+    align-items: center;
+  }
+  .lc__total {
+    font-size: clamp(3.5rem, 8vw, 6rem);
+    line-height: 0.85;
+    grid-row: span 2;
+  }
+  .lc__split {
+    display: flex;
+    gap: clamp(1.5rem, 4vw, 3rem);
+  }
+  .lc__seg {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+  .lc__n {
+    font-family: var(--mono);
+    font-size: 1.35rem;
+    font-weight: 500;
+  }
+
+  .lc__bar {
+    display: flex;
+    height: 3px;
+    width: 100%;
+    overflow: hidden;
+  }
+  .lc__bar span[data-d='e'] { background: var(--muted); }
+  .lc__bar span[data-d='m'] { background: var(--paper); }
+  .lc__bar span[data-d='h'] { background: var(--ember); }
+
+  .lc__note {
+    grid-column: 2;
+    font-size: var(--t-micro);
+    color: var(--muted-dim);
+    font-family: var(--mono);
+  }
+
+  @media (max-width: 640px) {
+    .lc__body { grid-template-columns: 1fr; }
+    .lc__total { grid-row: auto; }
+    .lc__note { grid-column: 1; }
+  }
+</style>

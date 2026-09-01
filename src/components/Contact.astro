@@ -1,0 +1,294 @@
+---
+import { profile } from '../data/profile';
+
+/**
+ * The old site shipped a form that faded its button and threw the message
+ * away. We do not repeat that.
+ *
+ * If PUBLIC_WEB3FORMS_KEY is set, a real form is rendered and messages are
+ * delivered. If it is not, the form is not rendered at all — a direct email
+ * route is shown instead. Better a plain mailto that works than a form that
+ * lies.
+ */
+const formKey = import.meta.env.PUBLIC_WEB3FORMS_KEY ?? '';
+const hasForm = formKey.length > 0;
+---
+
+<section class="section contact" id="contact">
+  <div class="wrap">
+    <hr class="rule reveal" />
+
+    <div class="contact__grid">
+      <div class="contact__intro">
+        <p class="eyebrow reveal">04 — Contact</p>
+        <h2 class="h2 reveal" style="--reveal-delay:80ms">
+          Let's build<br /><span class="italic accent">something</span>.
+        </h2>
+        <p class="prose reveal" style="--reveal-delay:140ms">
+          I'm looking for full-time engineering roles where the product matters and the bar is
+          high. If that's what you're hiring for, I'd like to hear about it.
+        </p>
+
+        <a class="mailto reveal" href={`mailto:${profile.email}`} style="--reveal-delay:200ms">
+          <span class="mailto__text">{profile.email}</span>
+        </a>
+
+        <div class="contact__actions reveal" style="--reveal-delay:260ms">
+          <button class="btn" type="button" data-copy={profile.email}>
+            <span data-copy-label>Copy email</span>
+          </button>
+          <a class="btn btn--ghost" href={profile.resume} target="_blank" rel="noopener">
+            Download CV<span class="sr-only"> (PDF, opens in a new tab)</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="contact__side">
+        {
+          hasForm ? (
+            <form class="form reveal" data-form>
+              <input type="hidden" name="access_key" value={formKey} />
+              <input type="hidden" name="subject" value="New message from portfolio" />
+              {/* Honeypot — bots fill it, humans never see it. */}
+              <input type="checkbox" name="botcheck" class="sr-only" tabindex="-1" autocomplete="off" />
+
+              <div class="field">
+                <label for="name">Name</label>
+                <input id="name" name="name" type="text" required autocomplete="name" />
+              </div>
+              <div class="field">
+                <label for="email">Email</label>
+                <input id="email" name="email" type="email" required autocomplete="email" />
+              </div>
+              <div class="field">
+                <label for="message">Message</label>
+                <textarea id="message" name="message" rows="4" required />
+              </div>
+
+              <button class="btn btn--full" type="submit" data-submit>Send message</button>
+              <p class="form__status" data-status role="status" aria-live="polite"></p>
+            </form>
+          ) : (
+            <div class="direct reveal">
+              <p class="eyebrow">Direct</p>
+              <ul class="direct__list">
+                <li>
+                  <a href={profile.links.linkedin} target="_blank" rel="noopener noreferrer">
+                    LinkedIn<span aria-hidden="true"> ↗</span>
+                  </a>
+                  <span>Fastest reply</span>
+                </li>
+                <li>
+                  <a href={`mailto:${profile.email}`}>
+                    Email<span aria-hidden="true"> ↗</span>
+                  </a>
+                  <span>Anything longer than a paragraph</span>
+                </li>
+                <li>
+                  <a href={profile.links.github} target="_blank" rel="noopener noreferrer">
+                    GitHub<span aria-hidden="true"> ↗</span>
+                  </a>
+                  <span>The code itself</span>
+                </li>
+                <li>
+                  <a href={`tel:${profile.phone.replace(/\s/g, '')}`}>{profile.phone}</a>
+                  <span>If it's urgent</span>
+                </li>
+              </ul>
+            </div>
+          )
+        }
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .contact__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: clamp(2.5rem, 6vw, 6rem);
+    padding-top: 3rem;
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    .contact__grid { grid-template-columns: 1fr; }
+  }
+
+  .contact__intro .h2 { margin-block: 1.25rem 1.75rem; }
+
+  .mailto {
+    display: block;
+    margin-top: 2.5rem;
+    font-family: var(--display);
+    font-size: clamp(1.5rem, 3.4vw, 2.75rem);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    word-break: break-word;
+  }
+  .mailto__text {
+    background-image: linear-gradient(var(--ember), var(--ember));
+    background-repeat: no-repeat;
+    background-size: 0% 1px;
+    background-position: 0 100%;
+    transition: background-size var(--dur) var(--ease);
+    padding-bottom: 0.1em;
+  }
+  .mailto:hover .mailto__text {
+    background-size: 100% 1px;
+  }
+
+  .contact__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 2rem;
+  }
+
+  .btn {
+    font-family: var(--mono);
+    font-size: var(--t-micro);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    padding: 0.9rem 1.5rem;
+    border: 1px solid var(--rule-strong);
+    color: var(--paper);
+    cursor: pointer;
+    transition:
+      background var(--dur-fast) var(--ease),
+      color var(--dur-fast) var(--ease),
+      border-color var(--dur-fast) var(--ease);
+  }
+  .btn:hover {
+    background: var(--paper);
+    color: var(--ink);
+    border-color: var(--paper);
+  }
+  .btn--ghost {
+    border-color: var(--rule);
+    color: var(--muted);
+  }
+  .btn--full { width: 100%; }
+
+  /* ---- Form ---- */
+  .form {
+    border: 1px solid var(--rule);
+    padding: clamp(1.5rem, 3vw, 2rem);
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+  .field label {
+    font-family: var(--mono);
+    font-size: var(--t-micro);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+  }
+  .field input,
+  .field textarea {
+    border-bottom: 1px solid var(--rule-strong);
+    padding: 0.6rem 0;
+    font-size: 1rem;
+    resize: vertical;
+    transition: border-color var(--dur-fast) var(--ease);
+  }
+  .field input:focus,
+  .field textarea:focus {
+    outline: none;
+    border-bottom-color: var(--ember);
+  }
+  .form__status {
+    font-family: var(--mono);
+    font-size: var(--t-micro);
+    color: var(--muted);
+    min-height: 1.2em;
+  }
+  .form__status[data-state='error'] { color: var(--ember); }
+
+  /* ---- Direct list ---- */
+  .direct { border: 1px solid var(--rule); padding: clamp(1.5rem, 3vw, 2rem); }
+  .direct__list { list-style: none; margin-top: 1.5rem; }
+  .direct__list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    padding-block: 0.9rem;
+    border-top: 1px solid var(--rule);
+  }
+  .direct__list li:first-child { border-top: 0; padding-top: 0; }
+  .direct__list a {
+    font-size: 1.05rem;
+    transition: color var(--dur-fast) var(--ease);
+  }
+  .direct__list a:hover { color: var(--ember); }
+  .direct__list span {
+    font-size: var(--t-micro);
+    color: var(--muted-dim);
+    text-align: right;
+    font-family: var(--mono);
+  }
+</style>
+
+<script>
+  /* ---- Copy email ---- */
+  document.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((btn) => {
+    const label = btn.querySelector('[data-copy-label]');
+    const original = label?.textContent ?? 'Copy email';
+
+    btn.addEventListener('click', async () => {
+      const value = btn.dataset.copy!;
+      try {
+        await navigator.clipboard.writeText(value);
+        if (label) label.textContent = 'Copied';
+      } catch {
+        // Clipboard API needs a secure context and can still be denied.
+        if (label) label.textContent = value;
+      }
+      setTimeout(() => {
+        if (label) label.textContent = original;
+      }, 2200);
+    });
+  });
+
+  /* ---- Form submit (only present when an access key is configured) ---- */
+  const form = document.querySelector<HTMLFormElement>('[data-form]');
+  if (form) {
+    const status = form.querySelector<HTMLElement>('[data-status]')!;
+    const submit = form.querySelector<HTMLButtonElement>('[data-submit]')!;
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      submit.disabled = true;
+      status.removeAttribute('data-state');
+      status.textContent = 'Sending…';
+
+      try {
+        const res = await fetch('https://api.web3forms.com/submit', {
+          method: 'POST',
+          headers: { Accept: 'application/json' },
+          body: new FormData(form),
+        });
+        const json = await res.json();
+
+        if (!res.ok || !json.success) throw new Error(json.message || `HTTP ${res.status}`);
+
+        status.textContent = 'Sent. I’ll reply within a day or two.';
+        form.reset();
+      } catch (err) {
+        // Say what actually happened and give a route that still works.
+        status.setAttribute('data-state', 'error');
+        status.textContent = 'Could not send — please email me directly instead.';
+        console.error(err);
+      } finally {
+        submit.disabled = false;
+      }
+    });
+  }
+</script>

@@ -1,0 +1,156 @@
+---
+import { profile } from '../data/profile';
+
+const year = new Date().getFullYear();
+
+const social = [
+  { label: 'GitHub', href: profile.links.github },
+  { label: 'LinkedIn', href: profile.links.linkedin },
+  { label: 'X', href: profile.links.twitter },
+  { label: 'LeetCode', href: profile.links.leetcode },
+  { label: 'CodeChef', href: profile.links.codechef },
+];
+---
+
+<footer class="foot">
+  <div class="wrap">
+    <hr class="rule" />
+
+    <div class="foot__grid">
+      <div class="foot__col">
+        <p class="eyebrow">Elsewhere</p>
+        <ul class="foot__links">
+          {
+            social.map((s) => (
+              <li>
+                <a href={s.href} target="_blank" rel="noopener noreferrer">
+                  {s.label}
+                  <span class="foot__arrow" aria-hidden="true">↗</span>
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+
+      <!-- The colophon. Small, but it's the detail that signals taste. -->
+      <div class="foot__col">
+        <p class="eyebrow">Colophon</p>
+        <dl class="foot__meta">
+          <dt>Display</dt>
+          <dd>Instrument Serif</dd>
+          <dt>Text</dt>
+          <dd>Cabinet Grotesk</dd>
+          <dt>Mono</dt>
+          <dd>JetBrains Mono</dd>
+          <dt>Built with</dt>
+          <dd>Astro · Three.js · Lenis</dd>
+          <dt>Hosted on</dt>
+          <dd>GitHub Pages</dd>
+        </dl>
+      </div>
+
+      <div class="foot__col foot__col--end">
+        <p class="foot__sig">
+          Designed and built by {profile.name}.<br />
+          Set in three typefaces, no templates.
+        </p>
+        <p class="foot__copy">© {year}</p>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .foot {
+    padding-block: 4rem 3rem;
+  }
+
+  .foot__grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: clamp(2rem, 5vw, 4rem);
+    margin-top: 3rem;
+    align-items: start;
+  }
+
+  .foot__col .eyebrow {
+    margin-bottom: 1.25rem;
+  }
+
+  .foot__links {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+
+  .foot__links a {
+    font-size: var(--t-small);
+    color: var(--muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: color var(--dur-fast) var(--ease);
+  }
+  .foot__links a:hover {
+    color: var(--paper);
+  }
+
+  .foot__arrow {
+    font-size: 0.7em;
+    transition: transform var(--dur-fast) var(--ease);
+  }
+  .foot__links a:hover .foot__arrow {
+    transform: translate(2px, -2px);
+  }
+
+  .foot__meta {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.4rem 1.25rem;
+    font-size: var(--t-small);
+  }
+  .foot__meta dt {
+    font-family: var(--mono);
+    font-size: var(--t-micro);
+    color: var(--muted-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    align-self: center;
+  }
+  .foot__meta dd {
+    color: var(--muted);
+  }
+
+  .foot__col--end {
+    text-align: right;
+  }
+  @media (max-width: 900px) {
+    .foot__col--end {
+      text-align: left;
+    }
+  }
+
+  .foot__sig {
+    font-family: var(--display);
+    font-size: 1.15rem;
+    line-height: 1.4;
+    color: var(--paper);
+  }
+
+  .foot__copy {
+    font-family: var(--mono);
+    font-size: var(--t-micro);
+    color: var(--muted-dim);
+    margin-top: 1.5rem;
+    letter-spacing: 0.08em;
+  }
+
+  @media (max-width: 900px) {
+    .foot__grid {
+      grid-template-columns: 1fr;
+      gap: 2.5rem;
+    }
+  }
+</style>

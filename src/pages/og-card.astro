@@ -1,0 +1,138 @@
+---
+/**
+ * Source for public/og.png — the social share card.
+ *
+ * Rendered to a PNG once with `npm run og`, which screenshots this page at
+ * 1200x630 and writes it into public/. It is committed, so CI needs no
+ * browser. Re-run it whenever the name, role or palette changes.
+ *
+ * Kept out of the sitemap and out of search (see astro.config.mjs and the
+ * robots meta below) — it is an asset source, not a page.
+ */
+import '../styles/tokens.css';
+import { profile } from '../data/profile';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>OG card source</title>
+  </head>
+  <body>
+    <div class="card">
+      <div class="card__glow"></div>
+      <div class="card__grain"></div>
+
+      <div class="card__top">
+        <span class="eyebrow">{profile.status.label}</span>
+      </div>
+
+      <div class="card__mid">
+        <p class="card__name">Mayank<br />Pal<i class="card__stop"></i></p>
+      </div>
+
+      <div class="card__bottom">
+        <span class="card__role">{profile.role}</span>
+        <span class="card__url">portfolio.mayankpal.co.in</span>
+      </div>
+    </div>
+  </body>
+</html>
+
+<style is:global>
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+    background: #08080a;
+    overflow: hidden;
+  }
+
+  .card {
+    width: 1200px;
+    height: 630px;
+    background: var(--ink);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 64px 72px;
+    box-sizing: border-box;
+  }
+
+  /* Same ember/bone light as the hero shard, flattened to a gradient. */
+  .card__glow {
+    position: absolute;
+    top: -22%;
+    right: -12%;
+    width: 620px;
+    height: 620px;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 36% 32%, rgba(250, 250, 248, 0.42), transparent 44%),
+      radial-gradient(circle at 66% 70%, rgba(198, 80, 45, 0.62), transparent 56%),
+      radial-gradient(circle at 50% 50%, rgba(58, 32, 24, 0.85), transparent 72%);
+    filter: blur(52px);
+  }
+
+  .card__grain {
+    position: absolute;
+    inset: 0;
+    opacity: 0.05;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .card__top,
+  .card__mid,
+  .card__bottom {
+    position: relative;
+    z-index: 2;
+  }
+
+  .card .eyebrow {
+    font-family: var(--mono);
+    font-size: 15px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #86868c;
+  }
+
+  .card__name {
+    font-family: var(--display);
+    font-size: 168px;
+    line-height: 0.84;
+    letter-spacing: -0.035em;
+    color: var(--paper);
+    margin: 0;
+  }
+
+  .card__stop {
+    display: inline-block;
+    width: 0.1em;
+    height: 0.1em;
+    border-radius: 50%;
+    background: var(--ember);
+    margin-left: 0.06em;
+  }
+
+  .card__bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-top: 1px solid rgba(250, 250, 248, 0.14);
+    padding-top: 26px;
+  }
+
+  .card__role,
+  .card__url {
+    font-family: var(--mono);
+    font-size: 17px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .card__role { color: var(--paper); }
+  .card__url { color: #86868c; }
+</style>

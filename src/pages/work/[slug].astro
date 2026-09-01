@@ -1,0 +1,266 @@
+---
+import Base from '../../layouts/Base.astro';
+import Motion from '../../components/Motion.astro';
+import { projects } from '../../data/projects';
+import { profile } from '../../data/profile';
+
+export function getStaticPaths() {
+  return projects.map((project, i) => ({
+    params: { slug: project.slug },
+    props: {
+      project,
+      next: projects[(i + 1) % projects.length],
+    },
+  }));
+}
+
+const { project, next } = Astro.props;
+---
+
+<Base
+  title={`${project.title} — ${profile.name}`}
+  description={project.summary}
+  back
+>
+  <article class="case" style={`--hue:${project.hue}`}>
+    <!-- ---------- Masthead ---------- -->
+    <header class="case__head">
+      <div class="wrap">
+        <p class="eyebrow case__idx line-mask">
+          <span>{project.index} — {project.year}</span>
+        </p>
+
+        <h1 class="display case__title line-mask" style="--reveal-delay:70ms">
+          <span>{project.title}</span>
+        </h1>
+
+        <p class="lede case__summary reveal" style="--reveal-delay:150ms">
+          {project.summary}
+        </p>
+
+        <dl class="case__facts reveal" style="--reveal-delay:220ms">
+          <div>
+            <dt class="eyebrow">Role</dt>
+            <dd>{project.role}</dd>
+          </div>
+          <div>
+            <dt class="eyebrow">Stack</dt>
+            <dd>{project.stack.join(' · ')}</dd>
+          </div>
+          {
+            project.status && (
+              <div>
+                <dt class="eyebrow">Status</dt>
+                <dd>{project.status}</dd>
+              </div>
+            )
+          }
+          {
+            project.links.length > 0 && (
+              <div>
+                <dt class="eyebrow">Links</dt>
+                <dd class="case__links">
+                  {project.links.map((l) => (
+                    <a href={l.href} target="_blank" rel="noopener noreferrer">
+                      {l.label}
+                      <span aria-hidden="true"> ↗</span>
+                    </a>
+                  ))}
+                </dd>
+              </div>
+            )
+          }
+        </dl>
+      </div>
+    </header>
+
+    <!-- ---------- Body ---------- -->
+    <div class="wrap case__body">
+      <section class="case__block">
+        <h2 class="eyebrow reveal">The problem</h2>
+        <p class="case__problem reveal" style="--reveal-delay:80ms">{project.problem}</p>
+      </section>
+
+      <section class="case__block">
+        <h2 class="eyebrow reveal">The approach</h2>
+        <ol class="case__steps">
+          {
+            project.approach.map((step, i) => (
+              <li class="reveal" style={`--reveal-delay:${i * 70}ms`}>
+                <span class="case__step-n">{String(i + 1).padStart(2, '0')}</span>
+                <p>{step}</p>
+              </li>
+            ))
+          }
+        </ol>
+      </section>
+
+      {
+        project.outcomes && (
+          <section class="case__block">
+            <h2 class="eyebrow reveal">Outcome</h2>
+            <ul class="case__outcomes">
+              {project.outcomes.map((o, i) => (
+                <li class="reveal" style={`--reveal-delay:${i * 70}ms`}>
+                  {o}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )
+      }
+    </div>
+
+    <!-- ---------- Next ---------- -->
+    <nav class="wrap case__next" aria-label="Next project">
+      <a href={`/work/${next.slug}`} class="nextlink reveal">
+        <span class="eyebrow">Next</span>
+        <span class="nextlink__title h2">{next.title}</span>
+        <span class="nextlink__go" aria-hidden="true">↗</span>
+      </a>
+    </nav>
+  </article>
+
+  <Motion />
+</Base>
+
+<style>
+  .case__head {
+    padding-block: clamp(8rem, 20vh, 13rem) clamp(3rem, 8vh, 5rem);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Per-project accent wash. The only place the hue is used at scale. */
+  .case__head::before {
+    content: '';
+    position: absolute;
+    top: -30%;
+    right: -10%;
+    width: 55vw;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--hue), transparent 62%);
+    opacity: 0.16;
+    filter: blur(70px);
+    pointer-events: none;
+  }
+
+  .case__head > .wrap { position: relative; }
+
+  .case__title { margin-block: 1.5rem 2rem; }
+  .case__summary { max-width: 34ch; }
+
+  .case__facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 2rem clamp(1.5rem, 3vw, 3rem);
+    margin-top: clamp(3rem, 8vh, 5rem);
+    padding-top: 2rem;
+    border-top: 1px solid var(--rule);
+  }
+  .case__facts dt { margin-bottom: 0.6rem; }
+  .case__facts dd {
+    font-size: var(--t-small);
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .case__links {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .case__links a {
+    color: var(--paper);
+    transition: color var(--dur-fast) var(--ease);
+    width: fit-content;
+  }
+  .case__links a:hover { color: var(--hue); }
+
+  /* ---- Body ---- */
+  .case__body {
+    padding-bottom: var(--section);
+  }
+
+  .case__block {
+    display: grid;
+    grid-template-columns: minmax(0, 12rem) minmax(0, 1fr);
+    gap: clamp(1.25rem, 4vw, 4rem);
+    padding-block: clamp(2.5rem, 6vh, 4rem);
+    border-top: 1px solid var(--rule);
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    .case__block { grid-template-columns: 1fr; gap: 1.5rem; }
+  }
+
+  .case__problem {
+    font-size: clamp(1.1rem, 1.6vw, 1.4rem);
+    line-height: 1.55;
+    max-width: 58ch;
+    color: var(--paper);
+  }
+
+  .case__steps { list-style: none; }
+  .case__steps li {
+    display: grid;
+    grid-template-columns: 3rem minmax(0, 1fr);
+    gap: 1rem;
+    padding-block: 1.1rem;
+    max-width: 68ch;
+  }
+  .case__steps li + li { border-top: 1px solid var(--rule); }
+  .case__step-n {
+    font-family: var(--mono);
+    font-size: var(--t-micro);
+    color: var(--hue);
+    padding-top: 0.35rem;
+  }
+  .case__steps p { color: var(--muted); line-height: 1.7; }
+
+  .case__outcomes { list-style: none; max-width: 58ch; }
+  .case__outcomes li {
+    padding-block: 0.85rem;
+    padding-left: 1.5rem;
+    position: relative;
+    border-bottom: 1px solid var(--rule);
+    font-size: var(--t-small);
+  }
+  .case__outcomes li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 1.45rem;
+    width: 6px;
+    height: 1px;
+    background: var(--hue);
+  }
+
+  /* ---- Next ---- */
+  .case__next { padding-bottom: 4rem; }
+  .nextlink {
+    display: grid;
+    gap: 0.75rem;
+    padding-block: clamp(2rem, 5vh, 3.5rem);
+    border-top: 1px solid var(--rule);
+    position: relative;
+  }
+  .nextlink__title {
+    transition: transform var(--dur-fast) var(--ease);
+    width: fit-content;
+  }
+  .nextlink:hover .nextlink__title { transform: translateX(10px); }
+  .nextlink__go {
+    position: absolute;
+    right: 0;
+    bottom: clamp(2rem, 5vh, 3.5rem);
+    font-size: 1.5rem;
+    color: var(--muted);
+    transition: transform var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+  }
+  .nextlink:hover .nextlink__go {
+    transform: translate(4px, -4px);
+    color: var(--hue);
+  }
+</style>

@@ -1,0 +1,94 @@
+---
+/**
+ * The motion layer: Lenis smooth scroll plus a single IntersectionObserver
+ * driving every reveal on the page.
+ *
+ * Deliberately no GSAP. Masked per-line reveals are CSS transitions toggled
+ * by one observer; pulling in a timeline library to do that would cost ~50KB
+ * for no visible gain.
+ *
+ * The observer *adds* `is-in`. The stylesheet only hides `.reveal` when
+ * `html.js` is present and reduced motion is off — so if this bundle fails
+ * to load, every element stays visible. The old site did the reverse and
+ * shipped three permanently blank sections because of it.
+ */
+---
+
+<script>
+  import Lenis from 'lenis';
+
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- Smooth scroll ---------- */
+  let lenis: Lenis | null = null;
+
+  if (!reduced) {
+    lenis = new Lenis({
+      duration: 1.15,
+      easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      smoothWheel: true,
+      // Never hijack touch scrolling — native momentum is better than
+      // anything we would emulate, and fighting it feels broken.
+      syncTouch: false,
+    });
+
+    const raf = (time: number) => {
+      lenis!.raf(time);
+      requestAnimationFrame(raf);
+    };
+    requestAnimationFrame(raf);
+  }
+
+  /* ---------- Anchor links ---------- */
+  document.querySelectorAll<HTMLAnchorElement>('a[href*="#"]').forEach((a) => {
+    a.addEventListener('click', (e) => {
+      const url = new URL(a.href, window.location.href);
+      if (url.pathname !== window.location.pathname) return;
+      const id = url.hash.slice(1);
+      if (!id) return;
+      const target = document.getElementById(id);
+      if (!target) return;
+
+      e.preventDefault();
+      if (lenis) {
+        lenis.scrollTo(target, { offset: -80 });
+      } else {
+        target.scrollIntoView({ behavior: 'auto', block: 'start' });
+      }
+      history.pushState(null, '', url.hash);
+    });
+  });
+
+  /* ---------- Reveals ---------- */
+  const targets = document.querySelectorAll('.reveal, .line-mask');
+
+  if (reduced || !('IntersectionObserver' in window)) {
+    targets.forEach((el) => el.classList.add('is-in'));
+  } else {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          entry.target.classList.add('is-in');
+          // Reveal once, then stop watching. Re-animating on scroll-back
+          // is the tell of a template.
+          observer.unobserve(entry.target);
+        });
+      },
+      // Fire a little before the element reaches the fold so the motion
+      // has finished by the time it is properly in view.
+      { rootMargin: '0px 0px -12% 0px', threshold: 0.01 },
+    );
+
+    targets.forEach((el) => observer.observe(el));
+
+    // Safety net: anything still unrevealed after 3s gets shown regardless.
+    // No visitor should ever see a blank section because an observer misfired.
+    window.setTimeout(() => {
+      document.querySelectorAll('.reveal:not(.is-in), .line-mask:not(.is-in)').forEach((el) => {
+        const rect = el.getBoundingClientRect();
+        if (rect.top < window.innerHeight * 1.5) el.classList.add('is-in');
+      });
+    }, 3000);
+  }
+</script>

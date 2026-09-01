@@ -1,0 +1,351 @@
+/* ============================================================
+   Editorial Noir — design tokens
+   Self-hosted faces only. No CDN, no runtime font request.
+   ============================================================ */
+
+/* Cabinet Grotesk — Fontshare (Indian Type Foundry), free commercial licence */
+@font-face {
+  font-family: 'Cabinet Grotesk';
+  src: url('/fonts/cabinet-grotesk-400.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Cabinet Grotesk';
+  src: url('/fonts/cabinet-grotesk-500.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Cabinet Grotesk';
+  src: url('/fonts/cabinet-grotesk-700.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Cabinet Grotesk';
+  src: url('/fonts/cabinet-grotesk-800.woff2') format('woff2');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Instrument Serif — SIL Open Font Licence */
+@font-face {
+  font-family: 'Instrument Serif';
+  src: url('/fonts/instrument-serif-400.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Instrument Serif';
+  src: url('/fonts/instrument-serif-400-italic.woff2') format('woff2');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* JetBrains Mono — SIL Open Font Licence */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/jetbrains-mono-400.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/jetbrains-mono-500.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* --- Colour. Deliberately tiny. The accent appears maybe six times. --- */
+  --ink: #08080a;
+  --ink-raised: #0e0e11;
+  --paper: #fafaf8;
+  --muted: #86868c;
+  --muted-dim: #5a5a60;
+  --rule: rgba(250, 250, 248, 0.11);
+  --rule-strong: rgba(250, 250, 248, 0.22);
+  --ember: #c6502d;
+  --ember-soft: rgba(198, 80, 45, 0.14);
+
+  /* --- Type --- */
+  --display: 'Instrument Serif', 'Times New Roman', serif;
+  --sans: 'Cabinet Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* The size jump between display and body is the entire effect. */
+  --t-display: clamp(3.4rem, 11.5vw, 11rem);
+  --t-h2: clamp(2.2rem, 5.5vw, 4.5rem);
+  --t-h3: clamp(1.35rem, 2.4vw, 2rem);
+  --t-body: clamp(1rem, 1.15vw, 1.15rem);
+  --t-small: 0.875rem;
+  --t-micro: 0.75rem;
+
+  /* --- Space --- */
+  --gutter: clamp(1.25rem, 5vw, 5.5rem);
+  --section: clamp(4.5rem, 10vh, 8rem);
+  --measure: 62ch;
+
+  /* --- Motion. Slow and weighted, never bouncy. --- */
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur: 900ms;
+  --dur-fast: 400ms;
+}
+
+/* ============================================================
+   Reset
+   ============================================================ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Lenis drives scrolling; native smooth-scroll would fight it.
+   Without JS the browser default applies, which is correct. */
+html:not(.lenis) {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--sans);
+  font-size: var(--t-body);
+  font-weight: 400;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  font-feature-settings: 'kern' 1, 'liga' 1;
+}
+
+img,
+svg,
+canvas,
+video {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+}
+
+::selection {
+  background: var(--ember);
+  color: var(--paper);
+}
+
+/* ============================================================
+   Focus — visible, and never only on colour
+   ============================================================ */
+
+:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 4px;
+  border-radius: 2px;
+}
+
+.skip-link {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 0.75rem 1.25rem;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  transform: translateY(-120%);
+  transition: transform var(--dur-fast) var(--ease);
+  z-index: 200;
+}
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+/* ============================================================
+   Layout
+   ============================================================ */
+
+.wrap {
+  width: 100%;
+  max-width: 1560px;
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+.section {
+  padding-block: var(--section);
+  position: relative;
+}
+
+.rule {
+  height: 1px;
+  background: var(--rule);
+  border: 0;
+  width: 100%;
+}
+
+/* ============================================================
+   Type utilities
+   ============================================================ */
+
+.display {
+  font-family: var(--display);
+  font-size: var(--t-display);
+  font-weight: 400;
+  line-height: 0.86;
+  letter-spacing: -0.03em;
+}
+
+.h2 {
+  font-family: var(--display);
+  font-size: var(--t-h2);
+  font-weight: 400;
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+}
+
+.h3 {
+  font-family: var(--sans);
+  font-size: var(--t-h3);
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.eyebrow {
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--muted);
+}
+
+.lede {
+  font-size: clamp(1.15rem, 1.7vw, 1.5rem);
+  line-height: 1.5;
+  max-width: var(--measure);
+  color: var(--paper);
+}
+
+.prose {
+  max-width: var(--measure);
+  color: var(--muted);
+}
+.prose p + p {
+  margin-top: 1.25rem;
+}
+
+.accent {
+  color: var(--ember);
+}
+
+.italic {
+  font-style: italic;
+}
+
+/* Screen-reader-only, still focusable */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ============================================================
+   Reveal animations
+
+   CRITICAL: content is visible by default. Animation *removes*
+   visibility, and only once JS has confirmed it can restore it
+   (html.js) and the user has not asked for reduced motion.
+   A JS failure therefore degrades to a fully readable page —
+   which is precisely the bug this rebuild exists to fix.
+   ============================================================ */
+
+.reveal {
+  --reveal-delay: 0ms;
+}
+
+html.js:not(.reduced-motion) .reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity var(--dur) var(--ease) var(--reveal-delay),
+    transform var(--dur) var(--ease) var(--reveal-delay);
+  will-change: opacity, transform;
+}
+
+html.js:not(.reduced-motion) .reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* Per-line masked reveal — the technique that reads as expensive.
+   The mask is a clipping parent; the line slides up inside it. */
+.line-mask {
+  display: block;
+  overflow: hidden;
+}
+.line-mask > span {
+  display: block;
+}
+html.js:not(.reduced-motion) .line-mask > span {
+  transform: translateY(105%);
+  transition: transform var(--dur) var(--ease) var(--reveal-delay);
+}
+html.js:not(.reduced-motion) .line-mask.is-in > span {
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  /* Belt and braces: force the end state regardless of class order. */
+  .reveal,
+  .line-mask > span {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

@@ -1,0 +1,123 @@
+---
+import '../styles/tokens.css';
+import { profile } from '../data/profile';
+import Grain from '../components/Grain.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+
+interface Props {
+  title?: string;
+  description?: string;
+  /** Set on case-study pages so the nav shows a back affordance. */
+  back?: boolean;
+}
+
+const {
+  title = profile.meta.title,
+  description = profile.meta.description,
+  back = false,
+} = Astro.props;
+
+const canonical = new URL(Astro.url.pathname, Astro.site).href;
+const ogImage = new URL('/og.png', Astro.site).href;
+
+const personSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Person',
+  name: profile.name,
+  url: Astro.site?.href,
+  email: `mailto:${profile.email}`,
+  jobTitle: profile.role,
+  alumniOf: {
+    '@type': 'CollegeOrUniversity',
+    name: profile.education.institution,
+  },
+  sameAs: [
+    profile.links.github,
+    profile.links.linkedin,
+    profile.links.twitter,
+    profile.links.leetcode,
+    profile.links.codechef,
+  ],
+};
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta name="author" content={profile.name} />
+    <meta name="theme-color" content="#08080A" />
+
+    <!-- Open Graph. The previous site pointed these at the wrong host and had
+         no image at all, so every share rendered as a blank grey card. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={profile.name} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={`${profile.name} — ${profile.role}`} />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content={canonical} />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+    <meta name="twitter:creator" content="@mayankkpall" />
+
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%2308080A'/%3E%3Ctext x='50' y='72' font-family='Georgia,serif' font-size='62' fill='%23FAFAF8' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E"
+    />
+
+    <!-- Preload only the two faces used above the fold. -->
+    <link
+      rel="preload"
+      href="/fonts/instrument-serif-400.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/cabinet-grotesk-400.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+
+    <script type="application/ld+json" set:html={JSON.stringify(personSchema)} />
+
+    <!-- Runs before first paint. Adding `js` is what *enables* the reveal
+         animations; if this never runs, the CSS leaves everything visible. -->
+    <script is:inline>
+      (function () {
+        var r = document.documentElement;
+        r.classList.add('js');
+        try {
+          if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            r.classList.add('reduced-motion');
+          }
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <Grain />
+    <Nav back={back} />
+    <main id="main">
+      <slot />
+    </main>
+    <Footer />
+  </body>
+</html>

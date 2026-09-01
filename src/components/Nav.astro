@@ -1,0 +1,180 @@
+---
+import { profile } from '../data/profile';
+
+interface Props {
+  back?: boolean;
+}
+const { back = false } = Astro.props;
+
+const items = [
+  { label: 'Work', href: '/#work' },
+  { label: 'About', href: '/#about' },
+  { label: 'Proof', href: '/#proof' },
+  { label: 'Contact', href: '/#contact' },
+];
+---
+
+<header class="nav" data-nav>
+  <div class="wrap nav__inner">
+    <a class="nav__mark" href="/" aria-label={`${profile.name} — home`}>
+      {back ? <span class="nav__back" aria-hidden="true">←</span> : null}
+      <span class="nav__mark-text">{profile.name}</span>
+    </a>
+
+    <nav aria-label="Primary">
+      <ul class="nav__list">
+        {
+          items.map((item) => (
+            <li>
+              <a class="nav__link" href={item.href}>
+                {item.label}
+              </a>
+            </li>
+          ))
+        }
+        <li>
+          <a class="nav__link nav__link--cv" href={profile.resume} target="_blank" rel="noopener">
+            CV<span class="sr-only"> (PDF, opens in a new tab)</span>
+          </a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<style>
+  .nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 90;
+    padding-block: 1.35rem;
+    transition:
+      background var(--dur-fast) var(--ease),
+      backdrop-filter var(--dur-fast) var(--ease),
+      border-color var(--dur-fast) var(--ease);
+    border-bottom: 1px solid transparent;
+  }
+
+  .nav.is-stuck {
+    background: rgba(8, 8, 10, 0.72);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    border-bottom-color: var(--rule);
+  }
+
+  .nav__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+  }
+
+  .nav__mark {
+    font-family: var(--display);
+    font-size: 1.15rem;
+    letter-spacing: -0.01em;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    white-space: nowrap;
+  }
+
+  .nav__back {
+    font-family: var(--sans);
+    font-size: 0.95rem;
+    color: var(--muted);
+    transition: transform var(--dur-fast) var(--ease);
+  }
+  .nav__mark:hover .nav__back {
+    transform: translateX(-3px);
+  }
+
+  .nav__list {
+    display: flex;
+    align-items: center;
+    gap: clamp(0.9rem, 2.2vw, 2.25rem);
+    list-style: none;
+  }
+
+  .nav__link {
+    font-family: var(--mono);
+    font-size: var(--t-micro);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    position: relative;
+    padding-block: 0.35rem;
+    transition: color var(--dur-fast) var(--ease);
+  }
+
+  /* Underline grows from the left rather than fading — reads as deliberate. */
+  .nav__link::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 1px;
+    width: 100%;
+    background: currentColor;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform var(--dur-fast) var(--ease);
+  }
+
+  .nav__link:hover,
+  .nav__link:focus-visible {
+    color: var(--paper);
+  }
+  .nav__link:hover::after {
+    transform: scaleX(1);
+  }
+
+  .nav__link--cv {
+    color: var(--paper);
+  }
+  .nav__link--cv::after {
+    transform: scaleX(1);
+    background: var(--rule-strong);
+  }
+  .nav__link--cv:hover::after {
+    background: var(--ember);
+  }
+
+  /* Below 640px the mark alone would crowd four links; drop the two
+     that are reachable by scrolling anyway. No hamburger, no JS. */
+  @media (max-width: 640px) {
+    .nav__list li:nth-child(2),
+    .nav__list li:nth-child(3) {
+      display: none;
+    }
+    .nav__mark-text {
+      font-size: 1rem;
+    }
+  }
+</style>
+
+<script>
+  // Adds the stuck background once scrolled. Passive listener, rAF-throttled —
+  // the old site ran unthrottled work on every scroll event.
+  const nav = document.querySelector('[data-nav]');
+  if (nav) {
+    let ticking = false;
+    const update = () => {
+      nav.classList.toggle('is-stuck', window.scrollY > 24);
+      ticking = false;
+    };
+    window.addEventListener(
+      'scroll',
+      () => {
+        if (!ticking) {
+          ticking = true;
+          requestAnimationFrame(update);
+        }
+      },
+      { passive: true },
+    );
+    update();
+  }
+</script>
