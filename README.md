@@ -65,10 +65,16 @@ costs 176KB once and stays sharp at any resolution.
 | Act | Section | The stage |
 | --- | --- | --- |
 | 0 | Hero | One solid shard, slowly turning |
-| 1 | Manifesto *(pinned, 360vh)* | It shatters; the camera pushes through the debris |
-| 2 | Work | Fragments gather into a vertical helix |
-| 3 | Proof | They settle into a flat lattice, behind the cards |
+| 1 | Work | It shatters into a vertical helix |
+| 2 | Approach *(pinned, 230vh)* | The debris spreads; the camera pushes through it |
+| 3 | Proof | The pieces settle into a lattice, behind the cards |
 | 4 | Contact | They converge and the shard reforms |
+
+**Work comes before the essay, deliberately.** An earlier version put the
+pinned section second, which meant 4,140px — 4.6 full screens — before a
+recruiter saw a project name, with 43% of the page spent on three paragraphs.
+It is now 900px. Apple can spend three screens on atmosphere because you
+arrived already wanting the product; a portfolio cannot.
 
 Acts are `data-act` elements. `src/lib/scroll.ts` measures their **real
 offsets** rather than assuming viewport multiples, so changing the length of
@@ -83,6 +89,20 @@ The pinned panels use non-overlapping triangular windows, so **two paragraphs
 are never legible at once**. Without JS the section unpins and the panels stack
 as ordinary prose; `verify.mjs` asserts both.
 
+### The sticky release point is measured, not guessed
+
+A sticky child stops being stuck before its section ends, then scrolls away
+with the page. Copy still legible at that moment slides up behind the fixed nav
+and gets cut mid-word. The fade-out is therefore derived from real geometry:
+
+```
+releaseAt = (sectionHeight - stickyHeight + viewportHeight / 2) / sectionHeight
+```
+
+A hard-coded value left an eighth of the act where the headline was fully
+opaque and clipped. `verify.mjs` scrolls the whole act and asserts no headline
+ever crosses under the nav while legible.
+
 ## Checks
 
 ```bash
@@ -90,9 +110,15 @@ npm run build && npm run preview
 node scripts/verify.mjs
 ```
 
-Covers: nothing stuck invisible (5 pages × 3 widths), no horizontal overflow,
-reduced-motion correctness, three.js absent on mobile and present on desktop,
-and accessible-name basics.
+58 checks covering: nothing stuck invisible (5 pages × 3 widths), no horizontal
+overflow, reduced-motion correctness, the three.js capability gate (simulated
+low memory / Save-Data / 2G, and that it *re-evaluates* on resize rather than
+deciding once), the pinned section's cross-fade and clipping, no-JS collapse,
+WCAG AA contrast against each element's real background, and 24px pointer
+targets.
+
+It refuses to run if the URL is unreachable — pointing it at a dead port used
+to silently audit Chrome's error page and report cheerful nonsense.
 
 Screenshots, if you want them:
 

@@ -20,7 +20,7 @@ const hasForm = formKey.length > 0;
 
     <div class="contact__grid">
       <div class="contact__intro">
-        <p class="eyebrow reveal">03 — Contact</p>
+        <p class="eyebrow reveal">04 — Contact</p>
         <h2 class="h2 reveal" style="--reveal-delay:80ms">
           Let's build<br /><span class="italic accent">something</span>.
         </h2>
@@ -77,12 +77,6 @@ const hasForm = formKey.length > 0;
                     LinkedIn<span aria-hidden="true"> ↗</span>
                   </a>
                   <span>Fastest reply</span>
-                </li>
-                <li>
-                  <a href={`mailto:${profile.email}`}>
-                    Email<span aria-hidden="true"> ↗</span>
-                  </a>
-                  <span>Anything longer than a paragraph</span>
                 </li>
                 <li>
                   <a href={profile.links.github} target="_blank" rel="noopener noreferrer">
@@ -170,6 +164,12 @@ const hasForm = formKey.length > 0;
   }
   .btn--full { width: 100%; }
 
+  /* Pinned so the label can change without the button resizing. */
+  [data-copy] {
+    min-width: 11.5rem;
+    text-align: center;
+  }
+
   /* ---- Form ---- */
   .form {
     border: 1px solid var(--rule);
@@ -217,14 +217,18 @@ const hasForm = formKey.length > 0;
   .direct__list li {
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
+    align-items: center;
     gap: 1rem;
-    padding-block: 0.9rem;
+    min-height: 44px;
+    padding-block: 0.75rem;
     border-top: 1px solid var(--rule);
   }
   .direct__list li:first-child { border-top: 0; padding-top: 0; }
   .direct__list a {
     font-size: 1.05rem;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
     transition: color var(--dur-fast) var(--ease);
   }
   .direct__list a:hover { color: var(--ember); }
@@ -241,6 +245,7 @@ const hasForm = formKey.length > 0;
   document.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((btn) => {
     const label = btn.querySelector('[data-copy-label]');
     const original = label?.textContent ?? 'Copy email';
+    const shortcut = navigator.platform?.toLowerCase().includes('mac') ? '\u2318C' : 'Ctrl+C';
 
     btn.addEventListener('click', async () => {
       const value = btn.dataset.copy!;
@@ -248,12 +253,23 @@ const hasForm = formKey.length > 0;
         await navigator.clipboard.writeText(value);
         if (label) label.textContent = 'Copied';
       } catch {
-        // Clipboard API needs a secure context and can still be denied.
-        if (label) label.textContent = value;
+        // The Clipboard API needs a secure context and can still be denied.
+        // Select the address on the page so the shortcut works, and tell the
+        // user which one — an earlier version pasted the raw address into the
+        // button, which said nothing useful and doubled its width.
+        const target = document.querySelector<HTMLElement>('.mailto__text');
+        if (target) {
+          const range = document.createRange();
+          range.selectNodeContents(target);
+          const sel = window.getSelection();
+          sel?.removeAllRanges();
+          sel?.addRange(range);
+        }
+        if (label) label.textContent = `Press ${shortcut}`;
       }
       setTimeout(() => {
         if (label) label.textContent = original;
-      }, 2200);
+      }, 2600);
     });
   });
 

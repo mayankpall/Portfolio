@@ -28,13 +28,6 @@ const manifesto = [
       two people's own UPI apps. That keeps it outside RBI's Payment Aggregator framework —
       and it shaped every screen in the product.`,
   },
-  {
-    kicker: 'The habit',
-    line: 'I reduce messy problems to clean shapes.',
-    body: `Rank 35 of 24,000 on CodeChef is not a job qualification. But the habit behind it
-      is the same one that keeps production code small, and keeps money maths and billing
-      cycles correct under test.`,
-  },
 ];
 ---
 
@@ -72,32 +65,7 @@ const manifesto = [
     </a>
   </section>
 
-  <!-- ==================== ACT 1 — MANIFESTO (pinned) ====================
-       A tall container with a sticky inner panel. Scroll progress cross-fades
-       the copy while the stage behind it shatters. This is the Apple
-       product-page beat. -->
-  <section class="manifesto" id="about" data-act="manifesto" data-pinned={manifesto.length}>
-    <div class="manifesto__sticky">
-      <div class="wrap">
-        {
-          manifesto.map((m, i) => (
-            <article class="panel" data-panel={i}>
-              <p class="eyebrow panel__kicker">{m.kicker}</p>
-              <p class="h2 panel__line">{m.line}</p>
-              <p class="panel__body">{m.body}</p>
-            </article>
-          ))
-        }
-      </div>
-
-      <!-- Progress through the pinned beat, so the scroll never feels stuck. -->
-      <div class="manifesto__ticks" aria-hidden="true">
-        {manifesto.map((_, i) => <span data-tick={i} />)}
-      </div>
-    </div>
-  </section>
-
-  <!-- ==================== ACT 2 — WORK ==================== -->
+  <!-- ==================== ACT 1 — WORK ==================== -->
   <section class="section work" id="work" data-act="work">
     <div class="wrap">
       <hr class="rule reveal" />
@@ -148,13 +116,46 @@ const manifesto = [
     </div>
   </section>
 
+  <!-- ==================== ACT 2 — APPROACH (pinned) ====================
+       A tall container with a sticky inner panel. Scroll progress cross-fades
+       the copy while the stage behind it shatters. This is the Apple
+       product-page beat. -->
+  <section class="manifesto" id="approach" data-act="approach" data-pinned={manifesto.length}>
+    <div class="manifesto__sticky">
+      <div class="wrap">
+        <p class="eyebrow manifesto__num">02 — Approach</p>
+        {
+          manifesto.map((m, i) => (
+            <article class="panel" data-panel={i}>
+              <p class="eyebrow panel__kicker">{m.kicker}</p>
+              <p class="h2 panel__line">{m.line}</p>
+              <p class="panel__body">{m.body}</p>
+            </article>
+          ))
+        }
+      </div>
+
+      <!-- Progress through the pinned beat, so the scroll never feels stuck. -->
+      <div class="manifesto__ticks" aria-hidden="true">
+        {manifesto.map((_, i) => <span data-tick={i} />)}
+      </div>
+    </div>
+  </section>
+
   <!-- ==================== ACT 3 — PROOF ==================== -->
   <section class="section" id="proof" data-act="proof">
     <div class="wrap">
       <hr class="rule reveal" />
       <header class="sect__head">
-        <p class="eyebrow reveal">02 — Proof</p>
-        <h2 class="h2 reveal" style="--reveal-delay:80ms">Receipts.</h2>
+        <p class="eyebrow reveal">03 — Proof</p>
+        <div>
+          <h2 class="h2 reveal" style="--reveal-delay:80ms">Receipts.</h2>
+          <p class="prose reveal proof__lede" style="--reveal-delay:140ms">
+            Competitive programming is not a job qualification. But the habit behind it —
+            reducing a messy problem to something with a clean shape — is the same one that
+            keeps production code small.
+          </p>
+        </div>
       </header>
 
       <ul class="proof">
@@ -258,10 +259,34 @@ const manifesto = [
 
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+    /**
+     * Where in this act the sticky element stops being stuck.
+     *
+     * A sticky child is pinned only while the section still has room beneath
+     * it; past that it scrolls away with the page. The timeline probes the
+     * viewport centre, so in timeline terms that release happens at:
+     *
+     *     ((sectionHeight - stickyHeight) + viewportHeight / 2) / sectionHeight
+     *
+     * The copy has to be gone by then. Hard-coding 0.86 left an eighth of the
+     * act where the panel was fully opaque and physically sliding up under the
+     * nav — the headline was cut mid-word. Measured, it cannot drift.
+     */
+    let releaseAt = 0.8;
+    const measureRelease = () => {
+      const sh = section.offsetHeight;
+      const kh = sticky.offsetHeight;
+      if (sh > 0) releaseAt = (sh - kh + window.innerHeight / 2) / sh;
+    };
+
     if (reduced) {
       // No pinning, no cross-fade: the panels simply stack and read as prose.
       section.classList.add('is-static');
     } else {
+      measureRelease();
+      window.addEventListener('resize', measureRelease, { passive: true });
+      document.fonts?.ready.then(measureRelease);
+
       onScroll(({ t }) => {
         // Local progress through this act, 0 to 1.
         const p = clamp(t - actIndex);
@@ -275,10 +300,12 @@ const manifesto = [
         // is what made the earlier version read as a double exposure.
         const head = Math.min(Math.max(p * n, 0.5), n - 0.5);
 
-        // Fade the whole stack in at the start and out before the section
-        // releases, so the pinned copy never collides with what follows.
+        // Fade in at the start, and out before the sticky releases, so the
+        // pinned copy is never sliding up behind the nav while still legible.
+        const fadeStart = releaseAt - 0.14;
+        const fadeEnd = releaseAt - 0.02;
         sticky.style.opacity = (
-          smooth(clamp(p / 0.05)) * (1 - smooth(clamp((p - 0.86) / 0.14)))
+          smooth(clamp(p / 0.05)) * (1 - smooth(clamp((p - fadeStart) / (fadeEnd - fadeStart))))
         ).toFixed(3);
 
         panels.forEach((panel, i) => {
@@ -429,9 +456,10 @@ const manifesto = [
 
   /* ==================== MANIFESTO (pinned) ==================== */
   .manifesto {
-    /* Tall enough to give each panel real scroll distance. Three panels want
-       roughly one viewport each, plus a little lead-in and lead-out. */
-    height: 360vh;
+    /* Two panels at roughly one viewport each, plus lead-in and lead-out.
+       This used to be 360vh for three panels — 43% of the whole page for
+       three short paragraphs, which is a budget only a product launch earns. */
+    height: 230vh;
     position: relative;
   }
 
@@ -442,6 +470,19 @@ const manifesto = [
     display: flex;
     flex-direction: column;
     justify-content: center;
+    /* Clears the fixed nav at the top and the tick row at the bottom, so the
+       panel is centred in the space it actually has rather than the whole
+       viewport. */
+    padding-block: 5.5rem 6.5rem;
+  }
+
+  /* Type keyed to viewport height as well as width. Without the vh term the
+     headline keeps its desktop size on a short window and overflows. */
+  .panel__line {
+    font-size: clamp(1.75rem, min(5vw, 6.4vh), 4.5rem);
+  }
+  .panel__body {
+    font-size: clamp(0.92rem, min(1.15vw, 2.1vh), 1.12rem);
   }
 
   /* Panels stack in the same grid cell and cross-fade. */
@@ -455,22 +496,28 @@ const manifesto = [
   }
 
   .panel__kicker {
-    margin-bottom: 1.5rem;
+    margin-bottom: clamp(0.75rem, 2vh, 1.5rem);
   }
   .panel__line {
-    margin-bottom: 1.75rem;
+    margin-bottom: clamp(0.9rem, 2.4vh, 1.75rem);
   }
   .panel__body {
     max-width: 46ch;
     color: var(--muted);
-    font-size: clamp(0.98rem, 1.15vw, 1.12rem);
-    line-height: 1.65;
+    line-height: 1.6;
+  }
+
+  /* The section number sits with the panels but does not cross-fade. */
+  .manifesto__num {
+    position: absolute;
+    top: 5.5rem;
+    left: var(--gutter);
   }
 
   .manifesto__ticks {
     position: absolute;
     left: var(--gutter);
-    bottom: 3.5rem;
+    bottom: clamp(1.75rem, 4vh, 3.5rem);
     display: flex;
     gap: 0.5rem;
   }
@@ -513,7 +560,7 @@ const manifesto = [
   }
 
   @media (max-width: 860px) {
-    .manifesto { height: 320vh; }
+    .manifesto { height: 210vh; }
     .panel { max-width: none; }
     .panel__line { max-width: 14ch; }
   }
@@ -717,14 +764,17 @@ const manifesto = [
   .lc__head {
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
+    align-items: center;
     gap: 1rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
   }
   .lc__link {
     font-family: var(--mono);
     font-size: var(--t-micro);
     color: var(--muted);
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
     transition: color var(--dur-fast) var(--ease);
   }
   .lc__link:hover { color: var(--ember); }

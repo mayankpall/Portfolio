@@ -7,9 +7,9 @@
  * The narrative, in five acts:
  *
  *   0  hero        one solid shard, slowly turning
- *   1  manifesto   it shatters; the camera pushes through the debris
- *   2  work        fragments gather into a slow vertical helix
- *   3  proof       they settle into a flat lattice
+ *   1  work        it shatters into a slow vertical helix — one shard per thing built
+ *   2  approach    the debris spreads and the camera pushes through it
+ *   3  proof       the pieces settle into a flat lattice
  *   4  contact     they converge and the shard reforms
  *
  * This is the Apple product-page structure — a sticky visual, scroll-scrubbed,
@@ -150,22 +150,65 @@
       deviceMemory?: number;
       connection?: { effectiveType?: string; saveData?: boolean };
     };
+    // Save-Data is an explicit request; honour it without argument.
     if (nav.connection?.saveData) return false;
-    if (nav.connection?.effectiveType && !/4g/.test(nav.connection.effectiveType)) return false;
+    // Only genuinely slow connections are excluded. An earlier version also
+    // blocked on "3g", which browsers report far more often than the actual
+    // link speed warrants — it withheld the scene from perfectly capable
+    // phones.
+    if (/(^|-)2g$/.test(nav.connection?.effectiveType ?? '')) return false;
     if (nav.deviceMemory !== undefined && nav.deviceMemory < 4) return false;
     if (navigator.hardwareConcurrency !== undefined && navigator.hardwareConcurrency < 4) return false;
     return true;
   }
 
-  if (glMount && !reduced && hasWebGL() && deviceCanAfford()) {
-    // Wait until the browser is idle so three.js never competes with first paint.
-    const start = () =>
-      init(glMount).catch((err) => console.warn('[stage] staying on the CSS wash:', err));
+  /**
+   * The gate is re-evaluated, not decided once.
+   *
+   * Previously this ran a single time at load: opening the page in a narrow
+   * window — or getting one pessimistic connection reading — meant the
+   * centrepiece never appeared for that whole visit, even after maximising.
+   * Now a resize past the breakpoint re-checks, and `started` makes sure the
+   * scene is still only ever built once.
+   */
+  let started = false;
 
+  function maybeStart() {
+    if (started || !glMount) return;
+    if (reduced || !hasWebGL() || !deviceCanAfford()) return;
+
+    started = true;
+    const go = () =>
+      init(glMount).catch((err) => {
+        // Leave the CSS wash in place rather than an empty black box, and
+        // allow a later attempt if this one failed for a transient reason.
+        started = false;
+        console.warn('[stage] staying on the CSS wash:', err);
+      });
+
+    // Wait for idle so three.js never competes with first paint.
     'requestIdleCallback' in window
-      ? (window as any).requestIdleCallback(start, { timeout: 2200 })
-      : window.setTimeout(start, 900);
+      ? (window as any).requestIdleCallback(go, { timeout: 2200 })
+      : window.setTimeout(go, 900);
   }
+
+  maybeStart();
+
+  // Re-check when the viewport crosses the breakpoint.
+  const wideQuery = window.matchMedia('(min-width: 768px)');
+  wideQuery.addEventListener?.('change', maybeStart);
+
+  // And when the user stops resizing, for the case where the breakpoint was
+  // already crossed before the listener attached.
+  let resizeTimer: number;
+  window.addEventListener(
+    'resize',
+    () => {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(maybeStart, 200);
+    },
+    { passive: true },
+  );
 
   async function init(el: HTMLElement) {
     const THREE = await import('three');
@@ -271,22 +314,22 @@
       return [(rand() - 0.5) * r, (rand() - 0.5) * r, (rand() - 0.5) * r] as Vec;
     });
 
-    // Act 1 — a debris shell. Fibonacci sphere, jittered so it reads as
-    // shattered rather than plotted.
+    // Act 1 — a slow vertical helix, pushed right so it clears the copy.
     formations[1] = Array.from({ length: COUNT }, (_, i) => {
+      const p = i / (COUNT - 1);
+      const th = p * Math.PI * 5;
+      const r = 1.05 + Math.sin(p * Math.PI) * 0.5;
+      return [1.85 + Math.cos(th) * r, (p - 0.5) * 5.4, Math.sin(th) * r] as Vec;
+    });
+
+    // Act 2 — a debris shell. Fibonacci sphere, jittered so it reads as
+    // shattered rather than plotted.
+    formations[2] = Array.from({ length: COUNT }, (_, i) => {
       const y = 1 - (i / (COUNT - 1)) * 2;
       const r = Math.sqrt(Math.max(0, 1 - y * y));
       const th = golden * i;
       const d = 1.5 + rand() * 1.0;
       return [0.9 + Math.cos(th) * r * d, y * d * 0.8, Math.sin(th) * r * d] as Vec;
-    });
-
-    // Act 2 — a slow vertical helix, pushed right so it clears the copy.
-    formations[2] = Array.from({ length: COUNT }, (_, i) => {
-      const p = i / (COUNT - 1);
-      const th = p * Math.PI * 5;
-      const r = 1.05 + Math.sin(p * Math.PI) * 0.5;
-      return [1.85 + Math.cos(th) * r, (p - 0.5) * 5.4, Math.sin(th) * r] as Vec;
     });
 
     // Act 3 — a lattice, tilted so it catches the key light edge-on.
@@ -426,14 +469,20 @@
       // Copy sits left the whole way down, so the object stays right of it —
       // except in act 3, where the proof grid is full-width and the object
       // instead retreats in z to sit behind the translucent cards.
+      // Work and Proof are full-width layouts, so the object retreats in z and
+      // sits behind the content. Approach and Contact keep their copy in the
+      // left column, so it comes forward and holds the right.
       rig.position.x =
         1.55 +
-        lerp(0, 0.45, smooth(range(tc, 0.9, 2))) +
-        lerp(0, -1.6, smooth(range(tc, 2.3, 3))) +
-        lerp(0, 0.7, smooth(range(tc, 3.3, 4)));
+        lerp(0, 0.5, smooth(range(tc, 0.9, 1.8))) +
+        lerp(0, -0.9, smooth(range(tc, 2.4, 3.2))) +
+        lerp(0, 0.6, smooth(range(tc, 3.3, 4)));
       rig.position.y = lerp(0.25, 0, smooth(range(tc, 0.8, 1.4)));
-      rig.position.z = lerp(0, -2.4, smooth(range(tc, 2.4, 3.1))) +
-        lerp(0, 2.0, smooth(range(tc, 3.3, 4)));
+      rig.position.z =
+        lerp(0, -1.7, smooth(range(tc, 0.9, 1.6))) +
+        lerp(0, 1.7, smooth(range(tc, 1.7, 2.4))) +
+        lerp(0, -2.2, smooth(range(tc, 2.5, 3.2))) +
+        lerp(0, 1.9, smooth(range(tc, 3.3, 4)));
       rig.rotation.y = tc * 0.55 + Math.sin(time * 0.1) * 0.05;
       rig.rotation.z = lerp(0, 0.35, smooth(range(tc, 2, 3)));
 

@@ -8,7 +8,7 @@ const { back = false } = Astro.props;
 
 const items = [
   { label: 'Work', href: '/#work' },
-  { label: 'About', href: '/#about' },
+  { label: 'Approach', href: '/#approach' },
   { label: 'Proof', href: '/#proof' },
   { label: 'Contact', href: '/#contact' },
 ];
@@ -87,6 +87,13 @@ const items = [
     opacity: 1;
   }
 
+  /* Below 640px the four links plus the mark would crowd; the two reachable
+     by scrolling anyway drop out. Vertical padding shrinks so a 44px target
+     does not inflate the header. */
+  @media (max-width: 640px) {
+    .nav { padding-block: 0.5rem; }
+  }
+
   .nav__inner {
     display: flex;
     align-items: center;
@@ -99,7 +106,8 @@ const items = [
     font-size: 1.15rem;
     letter-spacing: -0.01em;
     display: inline-flex;
-    align-items: baseline;
+    align-items: center;
+    min-height: 44px;
     gap: 0.5rem;
     white-space: nowrap;
   }
@@ -128,7 +136,13 @@ const items = [
     letter-spacing: 0.12em;
     color: var(--muted);
     position: relative;
-    padding-block: 0.35rem;
+    /* A 44px hit area. These were 27px tall — above the WCAG 2.2 minimum of
+       24px but well below a comfortable thumb target, and they are the
+       primary navigation on a phone. */
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding-inline: 0.25rem;
     transition: color var(--dur-fast) var(--ease);
   }
 
@@ -136,10 +150,10 @@ const items = [
   .nav__link::after {
     content: '';
     position: absolute;
-    left: 0;
-    bottom: 0;
+    left: 0.25rem;
+    right: 0.25rem;
+    bottom: 12px;
     height: 1px;
-    width: 100%;
     background: currentColor;
     transform: scaleX(0);
     transform-origin: left;
@@ -147,11 +161,16 @@ const items = [
   }
 
   .nav__link:hover,
-  .nav__link:focus-visible {
+  .nav__link:focus-visible,
+  .nav__link[aria-current='true'] {
     color: var(--paper);
   }
-  .nav__link:hover::after {
+  .nav__link:hover::after,
+  .nav__link[aria-current='true']::after {
     transform: scaleX(1);
+  }
+  .nav__link[aria-current='true']::after {
+    background: var(--ember);
   }
 
   .nav__link--cv {
@@ -187,10 +206,33 @@ const items = [
   const nav = document.querySelector('[data-nav]');
   const progress = document.querySelector<HTMLElement>('[data-progress]');
 
+  // Which nav link corresponds to which act, so the header can say where you
+  // are. On an eight-screen page with a pinned act, the progress hairline
+  // alone was not enough wayfinding.
+  const links = Array.from(document.querySelectorAll<HTMLAnchorElement>('.nav__link'));
+  const sections = links
+    .map((link) => {
+      const hash = link.getAttribute('href')?.split('#')[1];
+      return { link, el: hash ? document.getElementById(hash) : null };
+    })
+    .filter((s): s is { link: HTMLAnchorElement; el: HTMLElement } => !!s.el);
+
   if (nav) {
     onScroll(({ g }) => {
       nav.classList.toggle('is-stuck', window.scrollY > 24);
       progress?.style.setProperty('--p', g.toFixed(4));
+
+      // The section occupying the upper third of the viewport is the one you
+      // are reading; using the very top makes the label flip a beat early.
+      const probe = window.scrollY + window.innerHeight * 0.35;
+      let current: HTMLAnchorElement | null = null;
+      for (const { link, el } of sections) {
+        if (probe >= el.offsetTop && probe < el.offsetTop + el.offsetHeight) current = link;
+      }
+      for (const { link } of sections) {
+        if (link === current) link.setAttribute('aria-current', 'true');
+        else link.removeAttribute('aria-current');
+      }
     });
   }
 </script>

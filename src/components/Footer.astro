@@ -82,14 +82,17 @@ const social = [
     list-style: none;
     display: flex;
     flex-direction: column;
-    gap: 0.55rem;
   }
 
+  /* These were 22px tall, under the 24px WCAG 2.2 minimum for pointer
+     targets. 44px is the comfortable size and costs nothing here. */
   .foot__links a {
     font-size: var(--t-small);
     color: var(--muted);
     display: inline-flex;
     align-items: center;
+    min-height: 44px;
+    min-width: 3rem;
     gap: 0.4rem;
     transition: color var(--dur-fast) var(--ease);
   }

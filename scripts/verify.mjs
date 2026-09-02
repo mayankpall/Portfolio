@@ -34,6 +34,20 @@ const evaluate = async (expression) => {
   return result.value;
 };
 
+try {
+  const probe = await fetch(BASE, { redirect: 'follow' });
+  if (!probe.ok) throw new Error(`HTTP ${probe.status}`);
+  const html = await probe.text();
+  if (!html.includes('data-act')) throw new Error('served a page, but not this site');
+} catch (err) {
+  console.error(
+    `\n\x1b[31mCannot reach ${BASE} — ${err.message}\x1b[0m\n` +
+      `Start it first:  npm run build && npm run preview\n` +
+      `Or pass the right URL:  node scripts/verify.mjs http://localhost:4321\n`,
+  );
+  process.exit(2);
+}
+
 const failures = [];
 const pass = (msg) => console.log(`  [32m✓[0m ${msg}`);
 const fail = (msg) => {
@@ -237,10 +251,48 @@ await withChrome([], async () => {
 
 await withChrome([], async () => {
   const on = await fetchedThreeWith(
+    `Object.defineProperty(navigator, 'connection', { get: () => ({ effectiveType: '2g' }) });`,
+    375, 812,
+  );
+  !on ? pass('2G — three.js withheld') : fail('2G — three.js fetched anyway');
+});
+
+// 3G is deliberately allowed: browsers report it far more often than the real
+// link speed warrants, and blocking on it withheld the scene from capable
+// phones on wifi.
+await withChrome([], async () => {
+  const on = await fetchedThreeWith(
     `Object.defineProperty(navigator, 'connection', { get: () => ({ effectiveType: '3g' }) });`,
     375, 812,
   );
-  !on ? pass('3G — three.js withheld') : fail('3G — three.js fetched anyway');
+  on ? pass('3G — three.js allowed (deliberate)') : fail('3G — withheld, but should load');
+});
+
+/* ---------- 4a. The gate must re-evaluate, not decide once ---------- */
+// Regression guard: the gate used to run a single time at load, so opening the
+// page in a narrow window meant the centrepiece never appeared for that whole
+// visit — even after maximising.
+console.log('\n\x1b[1mCapability gate re-evaluates\x1b[0m');
+await withChrome([], async () => {
+  await send('Emulation.setDeviceMetricsOverride', { width: 500, height: 800, deviceScaleFactor: 1, mobile: true });
+  await send('Page.addScriptToEvaluateOnNewDocument', {
+    source: `Object.defineProperty(navigator, 'deviceMemory', { get: () => 2 });`,
+  });
+  await send('Page.navigate', { url: BASE + '/' });
+  await sleep(3400);
+
+  const narrow = await evaluate(LOADED_THREE);
+  !narrow ? pass('narrow + low memory — withheld') : fail('narrow + low memory — fetched anyway');
+
+  // Widen past the breakpoint, as a user dragging their window would.
+  await send('Emulation.setDeviceMetricsOverride', { width: 1400, height: 900, deviceScaleFactor: 1, mobile: false });
+  await evaluate(`window.dispatchEvent(new Event('resize'))`);
+  await sleep(3600);
+
+  const wide = await evaluate(LOADED_THREE);
+  const canvas = await evaluate(`!!document.querySelector('[data-stage-gl] canvas')`);
+  wide ? pass('widened — three.js now fetched') : fail('widened — still never fetched');
+  canvas ? pass('widened — stage canvas appeared') : fail('widened — no canvas after resize');
 });
 
 /* ---------- 4b. The pinned manifesto ---------- */
@@ -278,6 +330,30 @@ await withChrome([], async () => {
       ? pass('never more than one panel legible at a time')
       : fail(`${worstCount} panels legible simultaneously — double exposure`);
     everLegible >= 1 ? pass('panels do become legible') : fail('no panel ever reached opacity 0.5');
+
+    // A sticky child stops being stuck before its section ends, and then
+    // scrolls away with the page. Copy that is still legible at that point
+    // slides up behind the fixed nav and gets cut mid-word.
+    let clipped = 0;
+    for (let f = 0.05; f <= 0.99; f += 0.04) {
+      const y = Math.round(section.top + section.height * f - 450);
+      await evaluate(`window.scrollTo(0, ${y})`);
+      await sleep(300);
+      const bad = await evaluate(`
+        (() => {
+          const so = parseFloat(getComputedStyle(document.querySelector('.manifesto__sticky')).opacity);
+          return [...document.querySelectorAll('[data-panel]')].some((p) => {
+            if (parseFloat(getComputedStyle(p).opacity) * so <= 0.5) return false;
+            const h = p.querySelector('.panel__line');
+            return h ? h.getBoundingClientRect().top < 64 : false;
+          });
+        })()
+      `);
+      if (bad) clipped++;
+    }
+    clipped === 0
+      ? pass('headline never runs under the nav while legible')
+      : fail(`headline clipped under the nav at ${clipped} scroll positions`);
   }
 });
 
@@ -348,6 +424,90 @@ await withChrome([], async () => {
   a11y.btnsNoName === 0 ? pass('every button has an accessible name') : fail(`${a11y.btnsNoName} unnamed buttons`);
   a11y.h1 === 1 ? pass('exactly one h1') : fail(`${a11y.h1} h1 elements`);
   a11y.lang ? pass(`lang="${a11y.lang}"`) : fail('no lang attribute');
+});
+
+/* ---------- 6. Colour contrast ---------- */
+// --muted-dim shipped at 2.92:1 and failed AA on the tech chips, project
+// years, LeetCode note and colophon labels.
+console.log('\n\x1b[1mColour contrast (WCAG AA)\x1b[0m');
+await withChrome([], async () => {
+  await load('/', 1440);
+  const results = await evaluate(`
+    (() => {
+      const lum = (c) => {
+        const [r, g, b] = c.map((v) => {
+          v /= 255;
+          return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+        });
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      };
+      const parse = (s) => s.match(/\\d+/g).slice(0, 3).map(Number);
+      // Walk up for the nearest painted background; assuming the page colour
+      // scores elements like the skip link (dark ink on light paper) as if
+      // they were on the dark canvas.
+      const bgOf = (el) => {
+        let n = el;
+        while (n && n !== document.documentElement) {
+          const c = getComputedStyle(n).backgroundColor;
+          const m = c.match(/[\\d.]+/g);
+          if (m && (m.length < 4 || parseFloat(m[3]) > 0.85)) return m.slice(0, 3).map(Number);
+          n = n.parentElement;
+        }
+        return [8, 8, 10];
+      };
+      const ratio = (fg, bg) => {
+        const a = lum(fg), b = lum(bg);
+        return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+      };
+      const out = [];
+      const seen = new Set();
+      document.querySelectorAll('p,span,a,dd,dt,li,h1,h2,h3,label,button').forEach((el) => {
+        if (!el.textContent.trim() || el.children.length) return;
+        const cs = getComputedStyle(el);
+        if (parseFloat(cs.opacity) < 0.5) return;
+        const size = parseFloat(cs.fontSize);
+        const bold = parseInt(cs.fontWeight, 10) >= 700;
+        // AA: 3:1 for large text (>=24px, or >=18.66px bold), else 4.5:1.
+        const need = size >= 24 || (bold && size >= 18.66) ? 3 : 4.5;
+        const r = ratio(parse(cs.color), bgOf(el));
+        const key = cs.color + size;
+        if (r < need && !seen.has(key)) {
+          seen.add(key);
+          out.push(\`\${cs.color} at \${size}px → \${r.toFixed(2)}:1 (needs \${need}) — "\${el.textContent.trim().slice(0, 30)}"\`);
+        }
+      });
+      return out;
+    })()
+  `);
+  results.length === 0
+    ? pass('every text colour meets AA for its size')
+    : results.forEach((r) => fail(r));
+});
+
+/* ---------- 7. Pointer target sizes ---------- */
+// Footer links shipped at 22px, under the WCAG 2.2 minimum of 24px.
+console.log('\n\x1b[1mPointer targets (WCAG 2.2 · 24px min)\x1b[0m');
+await withChrome([], async () => {
+  for (const width of [375, 1440]) {
+    await load('/', width);
+    const small = await evaluate(`
+      (() => {
+        const bad = [];
+        document.querySelectorAll('a[href],button').forEach((el) => {
+          const r = el.getBoundingClientRect();
+          if (r.width === 0 || r.height === 0) return;
+          if (r.height < 24 || r.width < 24) {
+            bad.push(((el.textContent || '').trim().slice(0, 24) || el.tagName) +
+              '  ' + Math.round(r.width) + 'x' + Math.round(r.height));
+          }
+        });
+        return bad;
+      })()
+    `);
+    small.length === 0
+      ? pass(`@${width} — every target at least 24px`)
+      : small.forEach((t) => fail(`@${width} — ${t}`));
+  }
 });
 
 console.log(
