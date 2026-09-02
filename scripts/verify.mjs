@@ -61,6 +61,7 @@ async function withChrome(extraArgs, fn) {
       `--remote-debugging-port=${PORT}`,
       '--hide-scrollbars',
       '--no-first-run',
+      '--enable-unsafe-swiftshader',
       `--user-data-dir=/tmp/claude-verify-${Math.random().toString(36).slice(2)}`,
       ...extraArgs,
       'about:blank',
@@ -185,16 +186,146 @@ await withChrome(['--force-prefers-reduced-motion'], async () => {
   !state.canvas ? pass('three.js not loaded (correct)') : fail('three.js loaded despite reduced motion');
 });
 
-/* ---------- 4. Mobile must not download three.js ---------- */
-console.log('\n[1mMobile JS budget[0m');
-await withChrome([], async () => {
-  await load('/', 375, 812);
-  const canvas = await evaluate(`!!document.querySelector('[data-hero3d] canvas')`);
-  !canvas ? pass('375px — no WebGL canvas, poster only') : fail('375px — three.js initialised on mobile');
+/* ---------- 4. three.js budget ---------- */
+// What matters is not whether a canvas exists but whether the 176KB chunk was
+// fetched, and whether the capability gate actually gates. Headless Chrome
+// reports desktop-class memory and cores, so the constrained cases are
+// simulated by overriding navigator before any page script runs.
+console.log('\n\x1b[1mthree.js budget & capability gate\x1b[0m');
 
-  await load('/', 1440);
-  const desktopCanvas = await evaluate(`!!document.querySelector('[data-hero3d] canvas')`);
-  desktopCanvas ? pass('1440px — WebGL canvas present') : fail('1440px — hero canvas missing');
+const LOADED_THREE = `
+  performance.getEntriesByType('resource').some((r) => /three\\..*\\.js$/.test(r.name))
+`;
+
+async function fetchedThreeWith(overrideScript, width, height) {
+  await send('Emulation.setDeviceMetricsOverride', {
+    width, height, deviceScaleFactor: 1, mobile: width < 768,
+  });
+  if (overrideScript) {
+    await send('Page.addScriptToEvaluateOnNewDocument', { source: overrideScript });
+  }
+  await send('Page.navigate', { url: BASE + '/' });
+  await sleep(1500);
+  await evaluate('window.scrollTo(0, 200)');
+  // The stage starts on requestIdleCallback with a 2.2s timeout — wait past it.
+  await sleep(3400);
+  return evaluate(LOADED_THREE);
+}
+
+await withChrome([], async () => {
+  const on = await fetchedThreeWith(null, 1440, 900);
+  const live = await evaluate(`!!document.querySelector('[data-stage-gl] canvas')`);
+  on ? pass('desktop — three.js fetched') : fail('desktop — three.js never fetched');
+  live ? pass('desktop — stage canvas present') : fail('desktop — stage canvas missing');
+});
+
+await withChrome([], async () => {
+  const on = await fetchedThreeWith(
+    `Object.defineProperty(navigator, 'deviceMemory', { get: () => 2 });`,
+    375, 812,
+  );
+  !on ? pass('low-memory phone — three.js withheld') : fail('low-memory phone — three.js fetched anyway');
+});
+
+await withChrome([], async () => {
+  const on = await fetchedThreeWith(
+    `Object.defineProperty(navigator, 'connection', { get: () => ({ saveData: true, effectiveType: '4g' }) });`,
+    375, 812,
+  );
+  !on ? pass('Save-Data on — three.js withheld') : fail('Save-Data on — three.js fetched anyway');
+});
+
+await withChrome([], async () => {
+  const on = await fetchedThreeWith(
+    `Object.defineProperty(navigator, 'connection', { get: () => ({ effectiveType: '3g' }) });`,
+    375, 812,
+  );
+  !on ? pass('3G — three.js withheld') : fail('3G — three.js fetched anyway');
+});
+
+/* ---------- 4b. The pinned manifesto ---------- */
+console.log('\n\x1b[1mPinned manifesto\x1b[0m');
+await withChrome([], async () => {
+  await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+  await send('Page.navigate', { url: BASE + '/' });
+  await sleep(2000);
+
+  const section = await evaluate(`
+    (() => {
+      const el = document.querySelector('[data-pinned]');
+      return el ? { top: el.offsetTop, height: el.offsetHeight } : null;
+    })()
+  `);
+
+  if (!section) {
+    fail('no [data-pinned] section found');
+  } else {
+    // Never two paragraphs legible at once — the double-exposure bug.
+    let worstCount = 0;
+    let everLegible = 0;
+    for (let f = 0.05; f <= 0.95; f += 0.05) {
+      const y = Math.round(section.top + section.height * f - 450);
+      await evaluate(`window.scrollTo(0, ${y})`);
+      await sleep(320);
+      const legible = await evaluate(`
+        [...document.querySelectorAll('[data-panel]')]
+          .filter((p) => parseFloat(getComputedStyle(p).opacity) > 0.5).length
+      `);
+      worstCount = Math.max(worstCount, legible);
+      everLegible = Math.max(everLegible, legible);
+    }
+    worstCount <= 1
+      ? pass('never more than one panel legible at a time')
+      : fail(`${worstCount} panels legible simultaneously — double exposure`);
+    everLegible >= 1 ? pass('panels do become legible') : fail('no panel ever reached opacity 0.5');
+  }
+});
+
+/* ---------- 4c. Without JS the pinned section must collapse ---------- */
+console.log('\n\x1b[1mPinned section without JS\x1b[0m');
+await withChrome([], async () => {
+  // --disable-javascript is not honoured by headless=new; this CDP call is.
+  await send('Emulation.setScriptExecutionDisabled', { value: true });
+  await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+  await send('Page.navigate', { url: BASE + '/' });
+  await sleep(1500);
+
+  // evaluate() cannot run while script execution is disabled, so the page is
+  // inspected through the DOM and CSS agents instead.
+  await send('DOM.enable');
+  await send('CSS.enable');
+  const { root } = await send('DOM.getDocument', { depth: -1 });
+
+  const { nodeId: htmlNode } = await send('DOM.querySelector', { nodeId: root.nodeId, selector: 'html' });
+  const htmlAttrs = (await send('DOM.getAttributes', { nodeId: htmlNode })).attributes;
+  const classIdx = htmlAttrs.indexOf('class');
+  const htmlClass = classIdx === -1 ? '' : htmlAttrs[classIdx + 1];
+  !htmlClass.includes('js')
+    ? pass('html.js absent (JS really is off)')
+    : fail(`JS still ran — html class "${htmlClass}"`);
+
+  const styleOf = async (selector, prop) => {
+    const { nodeId } = await send('DOM.querySelector', { nodeId: root.nodeId, selector });
+    if (!nodeId) return null;
+    const { computedStyle } = await send('CSS.getComputedStyleForNode', { nodeId });
+    return computedStyle.find((c) => c.name === prop)?.value ?? null;
+  };
+
+  const pos = await styleOf('.manifesto__sticky', 'position');
+  pos === 'static'
+    ? pass('sticky released — panels stack as prose')
+    : fail(`still position: ${pos} without JS`);
+
+  const { nodeIds } = await send('DOM.querySelectorAll', { nodeId: root.nodeId, selector: '[data-panel]' });
+  let hidden = 0;
+  for (const nodeId of nodeIds) {
+    const { computedStyle } = await send('CSS.getComputedStyleForNode', { nodeId });
+    const o = parseFloat(computedStyle.find((c) => c.name === 'opacity')?.value ?? '1');
+    if (o < 0.99) hidden++;
+  }
+  hidden === 0
+    ? pass(`all ${nodeIds.length} panels readable`)
+    : fail(`${hidden} panels hidden with JS off`);
 });
 
 /* ---------- 5. Accessible names ---------- */

@@ -20,7 +20,8 @@ npm run preview      # serve dist/ on :4322
 | --- | --- |
 | `src/data/` | **All content.** Projects, achievements, profile. Edit here, not in markup. |
 | `src/styles/tokens.css` | The design system — colour, type scale, spacing, reveal behaviour. |
-| `src/components/Hero3D.astro` | The WebGL hero. Bare three.js, no React. |
+| `src/components/Scene.astro` | The persistent WebGL stage. Bare three.js, no React. |
+| `src/lib/scroll.ts` | The scroll timeline. One rAF loop, many subscribers. |
 | `src/components/Motion.astro` | Lenis smooth scroll + the single reveal observer. |
 | `src/pages/work/[slug].astro` | Case-study pages, generated from `src/data/projects.ts`. |
 | `src/pages/og-card.astro` | Source for the social share image. Not a real page. |
@@ -44,12 +45,43 @@ was supposed to reveal it. The observer misfired and three whole sections
 (`#projects`, `#achievements`, `#contact`) shipped stuck at `opacity: 0`. Do not
 reintroduce that pattern. `scripts/verify.mjs` checks for it.
 
-**2. three.js is desktop-only and lazy.** `Hero3D.astro` dynamically imports
-three only when the viewport is ≥768px, reduced motion is off, the hero is on
-screen, and a WebGL context can be created. Everything else gets the CSS poster
-in `index.astro`, which is the whole artwork on mobile.
+**2. three.js is lazy and capability-gated.** `Scene.astro` dynamically imports
+three only when reduced motion is off, a WebGL context can be created, and the
+device can afford it — desktop always, phones only when Save-Data is off, the
+connection is 4G, and there are ≥4 cores and ≥4GB of memory. Everything else
+keeps the CSS wash, which is scroll-driven too and never looks broken.
 
-A first mobile page load is ~54KB gzipped including both preloaded fonts.
+A first page load without the stage is ~54KB gzipped including both preloaded
+fonts. `scripts/verify.mjs` simulates a low-memory device, Save-Data and 3G to
+prove the gate actually gates.
+
+## The scroll story
+
+The page is a five-act scroll timeline, Apple-product-page style: a fixed
+visual that scrubs while pinned copy cross-fades over it. Apple does this with
+a ~148-frame JPEG sequence (5-20MB); this scrubs a live scene instead, so it
+costs 176KB once and stays sharp at any resolution.
+
+| Act | Section | The stage |
+| --- | --- | --- |
+| 0 | Hero | One solid shard, slowly turning |
+| 1 | Manifesto *(pinned, 360vh)* | It shatters; the camera pushes through the debris |
+| 2 | Work | Fragments gather into a vertical helix |
+| 3 | Proof | They settle into a flat lattice, behind the cards |
+| 4 | Contact | They converge and the shard reforms |
+
+Acts are `data-act` elements. `src/lib/scroll.ts` measures their **real
+offsets** rather than assuming viewport multiples, so changing the length of
+any section cannot desync the animation from the copy. Reordering the sections
+reorders the story.
+
+Everything scroll-driven — stage, pinned panels, nav progress bar — subscribes
+to that one loop. Two components each adding their own scroll listener is how
+pages start dropping frames.
+
+The pinned panels use non-overlapping triangular windows, so **two paragraphs
+are never legible at once**. Without JS the section unpins and the panels stack
+as ordinary prose; `verify.mjs` asserts both.
 
 ## Checks
 

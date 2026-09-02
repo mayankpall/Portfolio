@@ -2,6 +2,7 @@
 import '../styles/tokens.css';
 import { profile } from '../data/profile';
 import Grain from '../components/Grain.astro';
+import Scene from '../components/Scene.astro';
 import Nav from '../components/Nav.astro';
 import Footer from '../components/Footer.astro';
 
@@ -113,6 +114,7 @@ const personSchema = {
 
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
+    <Scene />
     <Grain />
     <Nav back={back} />
     <main id="main">

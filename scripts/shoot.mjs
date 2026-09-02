@@ -13,7 +13,8 @@ import { writeFile } from 'node:fs/promises';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-const [, , url, out, w = '1440', hh = '900'] = process.argv;
+const [, , url, out, w = '1440', hh = '900', mode = 'full'] = process.argv;
+const viewportOnly = mode === 'viewport';
 const width = Number(w);
 const height = Number(hh);
 const PORT = 9333;
@@ -95,16 +96,18 @@ try {
   });
   const pageHeight = result.value;
 
-  for (let y = 0; y < pageHeight; y += Math.floor(height * 0.6)) {
-    await send('Runtime.evaluate', { expression: `window.scrollTo(0, ${y})` });
-    await sleep(260);
+  if (!viewportOnly) {
+    for (let y = 0; y < pageHeight; y += Math.floor(height * 0.6)) {
+      await send('Runtime.evaluate', { expression: `window.scrollTo(0, ${y})` });
+      await sleep(260);
+    }
   }
   await send('Runtime.evaluate', { expression: 'window.scrollTo(0, 0)' });
   await sleep(1400);
 
   const shot = await send('Page.captureScreenshot', {
     format: 'png',
-    captureBeyondViewport: true,
+    captureBeyondViewport: !viewportOnly,
   });
 
   await writeFile(out, Buffer.from(shot.data, 'base64'));

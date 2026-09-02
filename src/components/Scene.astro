@@ -1,0 +1,466 @@
+---
+/**
+ * The persistent stage. One fixed WebGL canvas behind the whole document,
+ * driven by the scroll timeline in src/lib/scroll.ts — never unmounted, never
+ * restarted between sections.
+ *
+ * The narrative, in five acts:
+ *
+ *   0  hero        one solid shard, slowly turning
+ *   1  manifesto   it shatters; the camera pushes through the debris
+ *   2  work        fragments gather into a slow vertical helix
+ *   3  proof       they settle into a flat lattice
+ *   4  contact     they converge and the shard reforms
+ *
+ * This is the Apple product-page structure — a sticky visual, scroll-scrubbed,
+ * with copy pinned over it — but scrubbing a live scene rather than a
+ * pre-rendered image sequence. Apple ships ~148 JPEGs for one of these
+ * (5-20MB); this is 172KB of three.js, resolution-independent, and it responds
+ * to the cursor as well as the scroll.
+ *
+ * Loading is gated: reduced-motion off, WebGL available, and either a desktop
+ * viewport or a phone with the memory, cores and bandwidth to enjoy it.
+ * Everything else keeps the CSS stage gradient, which is scroll-driven too.
+ */
+---
+
+<div class="stage" aria-hidden="true">
+  <div class="stage__wash" data-stage-wash></div>
+  <div class="stage__gl" data-stage-gl></div>
+  <div class="stage__scrim"></div>
+</div>
+
+<style>
+  .stage {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  /* The CSS half of the stage. Always present: it is the ambient light behind
+     the whole page, and on devices that never load three.js it is the entire
+     artwork. Driven by the same timeline via custom properties. */
+  .stage__wash {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: min(150vw, 1500px);
+    aspect-ratio: 1;
+    translate: -50% -50%;
+    transform: translate3d(var(--wash-x, 18%), var(--wash-y, 0%), 0)
+      scale(var(--wash-scale, 1));
+    background:
+      radial-gradient(circle at 34% 30%, rgba(250, 250, 248, 0.16), transparent 38%),
+      radial-gradient(circle at 66% 68%, rgba(198, 80, 45, 0.22), transparent 48%),
+      radial-gradient(circle at 50% 50%, rgba(40, 24, 20, 0.35), transparent 66%);
+    filter: blur(80px);
+    opacity: var(--wash-opacity, 0.34);
+    will-change: transform, opacity;
+  }
+
+  .stage__gl {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 1.6s var(--ease);
+  }
+  .stage__gl.is-live {
+    opacity: 1;
+  }
+  /* Once the real scene is up the wash becomes a backing glow, not the subject. */
+  .stage:has(.stage__gl.is-live) .stage__wash {
+    opacity: calc(var(--wash-opacity, 0.34) * 0.5);
+  }
+
+  /* Guarantees the reading column stays legible however the scene moves.
+     Without this, text contrast depends on where a fragment happens to be. */
+  .stage__scrim {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(90deg, rgba(8, 8, 10, 0.92) 0%, rgba(8, 8, 10, 0.72) 26%,
+                      rgba(8, 8, 10, 0.12) 52%, transparent 72%),
+      linear-gradient(0deg, rgba(8, 8, 10, 0.55), transparent 22%);
+  }
+  @media (max-width: 860px) {
+    /* Narrow screens have no side column to protect — darken evenly instead. */
+    .stage__scrim {
+      background: linear-gradient(180deg, rgba(8, 8, 10, 0.55), rgba(8, 8, 10, 0.75));
+    }
+  }
+
+  .stage__gl :global(canvas) {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* Content sits above the stage. Scoped to the flow containers only:
+     applying this to every body child broke the skip link, which needs its
+     own position:absolute to stay off-screen until focused. */
+  :global(body > main),
+  :global(body > footer) {
+    position: relative;
+    z-index: 1;
+  }
+</style>
+
+<script>
+  import { onScroll, clamp, range, smooth, lerp } from '../lib/scroll';
+
+  const wash = document.querySelector<HTMLElement>('[data-stage-wash]');
+  const glMount = document.querySelector<HTMLElement>('[data-stage-gl]');
+
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------------- CSS wash: always on, even without WebGL ---------------- */
+  if (wash && !reduced) {
+    onScroll(({ t }) => {
+      // Follows the same choreography as the 3D rig, so the two never disagree.
+      const x = lerp(18, -12, smooth(range(t, 0.8, 1.9))) + lerp(0, 26, smooth(range(t, 2.2, 3.4)));
+      const y = lerp(0, -14, smooth(range(t, 1, 2.4))) + lerp(0, 12, smooth(range(t, 3, 4)));
+      const scale = 1 + smooth(range(t, 0.9, 1.8)) * 0.55 - smooth(range(t, 2.6, 4)) * 0.3;
+      const opacity = 0.34 - smooth(range(t, 1.2, 2.2)) * 0.1 + smooth(range(t, 3.2, 4)) * 0.1;
+
+      wash.style.setProperty('--wash-x', `${x}%`);
+      wash.style.setProperty('--wash-y', `${y}%`);
+      wash.style.setProperty('--wash-scale', scale.toFixed(3));
+      wash.style.setProperty('--wash-opacity', opacity.toFixed(3));
+    });
+  }
+
+  /* ---------------- Should we load three.js at all? ---------------- */
+  function hasWebGL() {
+    try {
+      const c = document.createElement('canvas');
+      return !!(c.getContext('webgl2') || c.getContext('webgl'));
+    } catch {
+      return false;
+    }
+  }
+
+  function deviceCanAfford() {
+    const wide = window.matchMedia('(min-width: 768px)').matches;
+    if (wide) return true;
+
+    // On phones the 172KB download and the GPU cost have to be earned.
+    const nav = navigator as Navigator & {
+      deviceMemory?: number;
+      connection?: { effectiveType?: string; saveData?: boolean };
+    };
+    if (nav.connection?.saveData) return false;
+    if (nav.connection?.effectiveType && !/4g/.test(nav.connection.effectiveType)) return false;
+    if (nav.deviceMemory !== undefined && nav.deviceMemory < 4) return false;
+    if (navigator.hardwareConcurrency !== undefined && navigator.hardwareConcurrency < 4) return false;
+    return true;
+  }
+
+  if (glMount && !reduced && hasWebGL() && deviceCanAfford()) {
+    // Wait until the browser is idle so three.js never competes with first paint.
+    const start = () =>
+      init(glMount).catch((err) => console.warn('[stage] staying on the CSS wash:', err));
+
+    'requestIdleCallback' in window
+      ? (window as any).requestIdleCallback(start, { timeout: 2200 })
+      : window.setTimeout(start, 900);
+  }
+
+  async function init(el: HTMLElement) {
+    const THREE = await import('three');
+
+    const small = window.matchMedia('(max-width: 767px)').matches;
+    const COUNT = small ? 20 : 34;
+
+    /* ---------------- Renderer ---------------- */
+    const renderer = new THREE.WebGLRenderer({
+      antialias: !small,
+      alpha: true,
+      powerPreference: 'high-performance',
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, small ? 1.5 : 2));
+    renderer.setSize(el.clientWidth, el.clientHeight);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.25;
+    el.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(42, el.clientWidth / el.clientHeight, 0.1, 100);
+
+    /* ---------------- Environment, from a 16px gradient ---------------- */
+    const W = 16;
+    const H = 64;
+    const data = new Uint8Array(W * H * 4);
+    const key = new THREE.Color('#fafaf8');
+    const mid = new THREE.Color('#2a2a30');
+    const rim = new THREE.Color('#c6502d');
+
+    for (let y = 0; y < H; y++) {
+      const p = y / (H - 1);
+      const c = new THREE.Color();
+      if (p < 0.5) c.copy(key).lerp(mid, p * 2);
+      else c.copy(mid).lerp(rim, (p - 0.5) * 2);
+      for (let x = 0; x < W; x++) {
+        const i = (y * W + x) * 4;
+        data[i] = c.r * 255;
+        data[i + 1] = c.g * 255;
+        data[i + 2] = c.b * 255;
+        data[i + 3] = 255;
+      }
+    }
+
+    const gradient = new THREE.DataTexture(data, W, H, THREE.RGBAFormat);
+    gradient.mapping = THREE.EquirectangularReflectionMapping;
+    gradient.colorSpace = THREE.SRGBColorSpace;
+    gradient.needsUpdate = true;
+
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    const envMap = pmrem.fromEquirectangular(gradient).texture;
+    pmrem.dispose();
+    gradient.dispose();
+
+    /* ---------------- Materials ---------------- */
+    const material = new THREE.MeshPhysicalMaterial({
+      envMap,
+      envMapIntensity: 3.1,
+      color: new THREE.Color('#3a3640'),
+      metalness: 0.5,
+      roughness: 0.2,
+      clearcoat: 1,
+      clearcoatRoughness: 0.06,
+      iridescence: 0.3,
+      iridescenceIOR: 1.35,
+      flatShading: true,
+    });
+
+    /* ---------------- The whole shard (acts 0 and 4) ---------------- */
+    const shard = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 0), material);
+    shard.scale.setScalar(1.15);
+
+    /* ---------------- The fragments (acts 1-3) ---------------- */
+    const fragGeo = new THREE.TetrahedronGeometry(0.3, 0);
+    const fragments = new THREE.InstancedMesh(fragGeo, material, COUNT);
+    fragments.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    fragments.frustumCulled = false;
+
+    const rig = new THREE.Group();
+    rig.add(shard, fragments);
+    scene.add(rig);
+
+    /* ---------------- Formations ----------------
+       One target position per fragment per act. The scene lerps between the
+       two acts either side of the current timeline value, so the transition
+       is continuous rather than a set of discrete states. */
+    type Vec = [number, number, number];
+    const formations: Vec[][] = [];
+
+    // Deterministic pseudo-random, so the layout is identical on every load
+    // and between the server-rendered and client state.
+    let seed = 1337;
+    const rand = () => {
+      seed = (seed * 16807) % 2147483647;
+      return seed / 2147483647;
+    };
+
+    const golden = Math.PI * (3 - Math.sqrt(5));
+
+    // Act 0 — hidden inside the shard.
+    formations[0] = Array.from({ length: COUNT }, () => {
+      const r = 0.2;
+      return [(rand() - 0.5) * r, (rand() - 0.5) * r, (rand() - 0.5) * r] as Vec;
+    });
+
+    // Act 1 — a debris shell. Fibonacci sphere, jittered so it reads as
+    // shattered rather than plotted.
+    formations[1] = Array.from({ length: COUNT }, (_, i) => {
+      const y = 1 - (i / (COUNT - 1)) * 2;
+      const r = Math.sqrt(Math.max(0, 1 - y * y));
+      const th = golden * i;
+      const d = 1.5 + rand() * 1.0;
+      return [0.9 + Math.cos(th) * r * d, y * d * 0.8, Math.sin(th) * r * d] as Vec;
+    });
+
+    // Act 2 — a slow vertical helix, pushed right so it clears the copy.
+    formations[2] = Array.from({ length: COUNT }, (_, i) => {
+      const p = i / (COUNT - 1);
+      const th = p * Math.PI * 5;
+      const r = 1.05 + Math.sin(p * Math.PI) * 0.5;
+      return [1.85 + Math.cos(th) * r, (p - 0.5) * 5.4, Math.sin(th) * r] as Vec;
+    });
+
+    // Act 3 — a lattice, tilted so it catches the key light edge-on.
+    formations[3] = Array.from({ length: COUNT }, (_, i) => {
+      const cols = Math.ceil(Math.sqrt(COUNT));
+      const cx = (i % cols) - (cols - 1) / 2;
+      const cy = Math.floor(i / cols) - (cols - 1) / 2;
+      return [cx * 0.72, cy * 0.72, Math.sin(cx * 1.4) * Math.cos(cy * 1.4) * 0.5] as Vec;
+    });
+
+    // Act 4 — converge, so the shard can reform out of them.
+    formations[4] = formations[0];
+
+    const ACTS = formations.length - 1;
+
+    // Per-fragment spin offsets, so they never rotate in lockstep.
+    const spin = Array.from({ length: COUNT }, () => ({
+      x: rand() * Math.PI * 2,
+      y: rand() * Math.PI * 2,
+      sx: 0.2 + rand() * 0.5,
+      sy: 0.2 + rand() * 0.5,
+    }));
+
+    /* ---------------- Lights ---------------- */
+    scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+
+    const keyLight = new THREE.DirectionalLight(0xfafaf8, 5.0);
+    keyLight.position.set(-3, 4, 5);
+    scene.add(keyLight);
+
+    const rimLight = new THREE.PointLight(0xc6502d, 26, 16);
+    rimLight.position.set(4.5, -1.5, 1.5);
+    scene.add(rimLight);
+
+    const fillLight = new THREE.PointLight(0x9aa3ab, 7, 16);
+    fillLight.position.set(-2.5, -2.5, -3);
+    scene.add(fillLight);
+
+    /* ---------------- Pointer ---------------- */
+    const pointer = { x: 0, y: 0 };
+    if (!small) {
+      window.addEventListener(
+        'pointermove',
+        (e) => {
+          pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+          pointer.y = (e.clientY / window.innerHeight) * 2 - 1;
+        },
+        { passive: true },
+      );
+    }
+
+    /* ---------------- Timeline ---------------- */
+    let t = 0;
+    onScroll((tl) => {
+      t = tl.t;
+    });
+
+    /* ---------------- Resize ---------------- */
+    const onResize = () => {
+      const w = el.clientWidth;
+      const h = el.clientHeight;
+      if (!w || !h) return;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    };
+    new ResizeObserver(onResize).observe(el);
+
+    /* ---------------- Loop ---------------- */
+    const dummy = new THREE.Object3D();
+    const clock = new THREE.Clock();
+    let running = true;
+
+    renderer.domElement.addEventListener('webglcontextlost', (e) => {
+      e.preventDefault();
+      running = false;
+      el.classList.remove('is-live');
+    });
+
+    const frame = () => {
+      if (!running) return;
+      requestAnimationFrame(frame);
+      if (document.hidden) return;
+
+      const delta = Math.min(clock.getDelta(), 0.05);
+      const time = clock.elapsedTime;
+
+      const tc = clamp(t, 0, ACTS);
+      const i0 = Math.min(Math.floor(tc), ACTS - 1);
+      const i1 = i0 + 1;
+
+      // The first and last transitions are deliberately late and fast: the
+      // shatter and the reassembly should read as events, not as a drift that
+      // has already half-happened before you scrolled.
+      const blend =
+        i0 === 0
+          ? smooth(range(tc, 0.82, 1.45))
+          : i0 === ACTS - 1
+            ? smooth(range(tc, 3.42, 3.95))
+            : smooth(tc - i0);
+
+      /* --- Fragments --- */
+      // Scale in as the shard shatters, out again as it reforms.
+      const fragScale =
+        smooth(range(tc, 0.84, 1.22)) * (1 - smooth(range(tc, 3.62, 3.93)));
+
+      const a = formations[i0];
+      const b = formations[i1];
+
+      for (let i = 0; i < COUNT; i++) {
+        dummy.position.set(
+          lerp(a[i][0], b[i][0], blend),
+          lerp(a[i][1], b[i][1], blend),
+          lerp(a[i][2], b[i][2], blend),
+        );
+
+        const s = spin[i];
+        dummy.rotation.set(s.x + time * s.sx * 0.35, s.y + time * s.sy * 0.35, 0);
+
+        // A touch of size variance keeps the debris from looking manufactured.
+        dummy.scale.setScalar(fragScale * (0.7 + ((i * 37) % 11) / 18));
+        dummy.updateMatrix();
+        fragments.setMatrixAt(i, dummy.matrix);
+      }
+      fragments.instanceMatrix.needsUpdate = true;
+      fragments.visible = fragScale > 0.01;
+
+      /* --- The whole shard --- */
+      const shardScale =
+        1.15 * (1 - smooth(range(tc, 0.8, 1.14))) + 1.15 * smooth(range(tc, 3.6, 3.98));
+      shard.visible = shardScale > 0.01;
+      shard.scale.setScalar(shardScale);
+      shard.rotation.y += delta * 0.15;
+      shard.rotation.x = Math.sin(time * 0.21) * 0.2;
+
+      /* --- Rig: the composition move across the whole page --- */
+      // Copy sits left the whole way down, so the object stays right of it —
+      // except in act 3, where the proof grid is full-width and the object
+      // instead retreats in z to sit behind the translucent cards.
+      rig.position.x =
+        1.55 +
+        lerp(0, 0.45, smooth(range(tc, 0.9, 2))) +
+        lerp(0, -1.6, smooth(range(tc, 2.3, 3))) +
+        lerp(0, 0.7, smooth(range(tc, 3.3, 4)));
+      rig.position.y = lerp(0.25, 0, smooth(range(tc, 0.8, 1.4)));
+      rig.position.z = lerp(0, -2.4, smooth(range(tc, 2.4, 3.1))) +
+        lerp(0, 2.0, smooth(range(tc, 3.3, 4)));
+      rig.rotation.y = tc * 0.55 + Math.sin(time * 0.1) * 0.05;
+      rig.rotation.z = lerp(0, 0.35, smooth(range(tc, 2, 3)));
+
+      /* --- Camera: dolly through the acts, plus cursor parallax --- */
+      const z = lerp(5.0, 3.4, smooth(range(tc, 0.9, 1.6)));
+      const z2 = lerp(0, 2.2, smooth(range(tc, 1.4, 2.6)));
+      const z3 = lerp(0, -0.6, smooth(range(tc, 3.2, 4)));
+
+      const targetZ = z + z2 + z3;
+      const targetX = pointer.x * 0.35;
+      const targetY = -pointer.y * 0.22 + lerp(0, -0.4, smooth(range(tc, 2.2, 3.2)));
+
+      camera.position.x += (targetX - camera.position.x) * 0.045;
+      camera.position.y += (targetY - camera.position.y) * 0.045;
+      camera.position.z += (targetZ - camera.position.z) * 0.06;
+      camera.lookAt(0, 0, 0);
+
+      /* --- Light drifts with the story --- */
+      rimLight.intensity = lerp(26, 40, smooth(range(tc, 1.2, 2.4)));
+      keyLight.intensity = lerp(4.2, 6.2, smooth(range(tc, 2.4, 3.6)));
+
+      renderer.render(scene, camera);
+    };
+
+    onResize();
+    camera.position.set(0, 0, 5);
+    frame();
+    el.classList.add('is-live');
+  }
+</script>

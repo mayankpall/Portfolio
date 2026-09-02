@@ -24,7 +24,7 @@ const { project, next } = Astro.props;
 >
   <article class="case" style={`--hue:${project.hue}`}>
     <!-- ---------- Masthead ---------- -->
-    <header class="case__head">
+    <header class="case__head" data-act="case-head">
       <div class="wrap">
         <p class="eyebrow case__idx line-mask">
           <span>{project.index} — {project.year}</span>
@@ -75,7 +75,7 @@ const { project, next } = Astro.props;
     </header>
 
     <!-- ---------- Body ---------- -->
-    <div class="wrap case__body">
+    <div class="wrap case__body" data-act="case-body">
       <section class="case__block">
         <h2 class="eyebrow reveal">The problem</h2>
         <p class="case__problem reveal" style="--reveal-delay:80ms">{project.problem}</p>
@@ -112,7 +112,7 @@ const { project, next } = Astro.props;
     </div>
 
     <!-- ---------- Next ---------- -->
-    <nav class="wrap case__next" aria-label="Next project">
+    <nav class="wrap case__next" aria-label="Next project" data-act="case-next">
       <a href={`/work/${next.slug}`} class="nextlink reveal">
         <span class="eyebrow">Next</span>
         <span class="nextlink__title h2">{next.title}</span>
@@ -129,21 +129,6 @@ const { project, next } = Astro.props;
     padding-block: clamp(8rem, 20vh, 13rem) clamp(3rem, 8vh, 5rem);
     position: relative;
     overflow: hidden;
-  }
-
-  /* Per-project accent wash. The only place the hue is used at scale. */
-  .case__head::before {
-    content: '';
-    position: absolute;
-    top: -30%;
-    right: -10%;
-    width: 55vw;
-    aspect-ratio: 1;
-    border-radius: 50%;
-    background: radial-gradient(circle, var(--hue), transparent 62%);
-    opacity: 0.16;
-    filter: blur(70px);
-    pointer-events: none;
   }
 
   .case__head > .wrap { position: relative; }

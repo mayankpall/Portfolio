@@ -1,22 +1,46 @@
 ---
 import Base from '../layouts/Base.astro';
 import Motion from '../components/Motion.astro';
-import Hero3D from '../components/Hero3D.astro';
 import Contact from '../components/Contact.astro';
 import { profile } from '../data/profile';
 import { projects } from '../data/projects';
 import { achievements } from '../data/achievements';
 import leetcode from '../data/leetcode.json';
+
+/**
+ * Each `data-act` section is one beat of the scroll timeline that drives the
+ * WebGL stage (see src/lib/scroll.ts). Their order and their real heights are
+ * the animation's clock — reordering them reorders the story.
+ */
+
+const manifesto = [
+  {
+    kicker: 'The work',
+    line: 'I build products end to end, and I ship them.',
+    body: `Most of my time goes to RecurTrack — a recurring-payments app for Indian
+      households. React Native and TypeScript on the front, Python behind it, currently
+      in App Store review.`,
+  },
+  {
+    kicker: 'The interesting part',
+    line: 'The best decision in it was a constraint.',
+    body: `RecurTrack never holds, receives, or moves money. Payments flow directly between
+      two people's own UPI apps. That keeps it outside RBI's Payment Aggregator framework —
+      and it shaped every screen in the product.`,
+  },
+  {
+    kicker: 'The habit',
+    line: 'I reduce messy problems to clean shapes.',
+    body: `Rank 35 of 24,000 on CodeChef is not a job qualification. But the habit behind it
+      is the same one that keeps production code small, and keeps money maths and billing
+      cycles correct under test.`,
+  },
+];
 ---
 
 <Base>
-  <!-- ==================== HERO ==================== -->
-  <section class="hero" id="top">
-    <!-- The poster sits underneath the canvas. On phones it is the whole
-         artwork; three.js is never downloaded there. -->
-    <div class="hero__poster" aria-hidden="true"></div>
-    <Hero3D />
-
+  <!-- ==================== ACT 0 — HERO ==================== -->
+  <section class="hero" id="top" data-act="hero">
     <div class="wrap hero__inner">
       <p class="hero__status line-mask">
         <span>
@@ -27,7 +51,9 @@ import leetcode from '../data/leetcode.json';
 
       <h1 class="display hero__title">
         <span class="line-mask"><span>Mayank</span></span>
-        <span class="line-mask" style="--reveal-delay:90ms"><span>Pal<i class="hero__stop"></i></span></span>
+        <span class="line-mask" style="--reveal-delay:90ms">
+          <span>Pal<i class="hero__stop"></i></span>
+        </span>
       </h1>
 
       <div class="hero__foot">
@@ -40,68 +66,43 @@ import leetcode from '../data/leetcode.json';
       </div>
     </div>
 
-    <a class="hero__scroll" href="#about" aria-label="Scroll to content">
+    <a class="hero__scroll" href="#work" aria-label="Scroll to content">
       <span class="eyebrow">Scroll</span>
       <span class="hero__scroll-line" aria-hidden="true"></span>
     </a>
   </section>
 
-  <!-- ==================== ABOUT / INDEX ==================== -->
-  <section class="section" id="about">
-    <div class="wrap">
-      <hr class="rule reveal" />
-      <div class="idx">
-        <p class="eyebrow reveal">01 — Index</p>
+  <!-- ==================== ACT 1 — MANIFESTO (pinned) ====================
+       A tall container with a sticky inner panel. Scroll progress cross-fades
+       the copy while the stage behind it shatters. This is the Apple
+       product-page beat. -->
+  <section class="manifesto" id="about" data-act="manifesto" data-pinned={manifesto.length}>
+    <div class="manifesto__sticky">
+      <div class="wrap">
+        {
+          manifesto.map((m, i) => (
+            <article class="panel" data-panel={i}>
+              <p class="eyebrow panel__kicker">{m.kicker}</p>
+              <p class="h2 panel__line">{m.line}</p>
+              <p class="panel__body">{m.body}</p>
+            </article>
+          ))
+        }
+      </div>
 
-        <div class="idx__body">
-          <div class="idx__lede">
-            <p class="lede reveal">
-              I finished a Computer Science degree at {profile.education.institution} in
-              {profile.education.to} with a CGPA of {profile.education.cgpa}, and I have spent the
-              time since building things people actually use rather than things that demo well.
-            </p>
-            <div class="prose reveal" style="--reveal-delay:120ms">
-              <p>
-                Most of my work lately is <a class="ilink" href="/work/recurtrack">RecurTrack</a> — a
-                recurring-payments app for Indian households. The interesting part is not the stack,
-                it is a constraint: it never holds or moves money. That single decision keeps it
-                outside a regulatory framework it could not otherwise satisfy, and it shaped every
-                screen in the product.
-              </p>
-              <p>
-                Before that, real-time systems and interfaces — websockets, auth, and the unglamorous
-                testing that keeps money maths and billing cycles correct. I write unit and contract
-                tests because rounding errors in shared costs are the kind of bug users never forgive.
-              </p>
-              <p>
-                I also compete. A global rank of 35 out of 24,000 on CodeChef is not a job
-                qualification, but the habit behind it — reducing a messy problem to something with a
-                clean shape — is the same habit that makes production code smaller.
-              </p>
-            </div>
-          </div>
-
-          <dl class="stack reveal" style="--reveal-delay:200ms">
-            {
-              profile.stack.map((group) => (
-                <div class="stack__row">
-                  <dt class="eyebrow">{group.label}</dt>
-                  <dd>{group.items.join(' · ')}</dd>
-                </div>
-              ))
-            }
-          </dl>
-        </div>
+      <!-- Progress through the pinned beat, so the scroll never feels stuck. -->
+      <div class="manifesto__ticks" aria-hidden="true">
+        {manifesto.map((_, i) => <span data-tick={i} />)}
       </div>
     </div>
   </section>
 
-  <!-- ==================== WORK ==================== -->
-  <section class="section work" id="work">
+  <!-- ==================== ACT 2 — WORK ==================== -->
+  <section class="section work" id="work" data-act="work">
     <div class="wrap">
       <hr class="rule reveal" />
-      <header class="work__head">
-        <p class="eyebrow reveal">02 — Selected work</p>
+      <header class="sect__head">
+        <p class="eyebrow reveal">01 — Selected work</p>
         <h2 class="h2 reveal" style="--reveal-delay:80ms">
           Four things I<br /><span class="italic accent">shipped</span>.
         </h2>
@@ -113,7 +114,6 @@ import leetcode from '../data/leetcode.json';
             <li class="reveal" style={`--reveal-delay:${i * 70}ms`}>
               <a class="proj" href={`/work/${p.slug}`}>
                 <span class="proj__index eyebrow">{p.index}</span>
-
                 <span class="proj__main">
                   <span class="proj__title h3">{p.title}</span>
                   <span class="proj__summary">{p.summary}</span>
@@ -123,7 +123,6 @@ import leetcode from '../data/leetcode.json';
                     ))}
                   </span>
                 </span>
-
                 <span class="proj__meta">
                   <span class="proj__year">{p.year}</span>
                   <span class="proj__go" aria-hidden="true">↗</span>
@@ -133,15 +132,28 @@ import leetcode from '../data/leetcode.json';
           ))
         }
       </ol>
+
+      <!-- The stack table lives here, where it reads as evidence for the work
+           above rather than as a decontextualised skills list. -->
+      <dl class="stack reveal">
+        {
+          profile.stack.map((group) => (
+            <div class="stack__row">
+              <dt class="eyebrow">{group.label}</dt>
+              <dd>{group.items.join(' · ')}</dd>
+            </div>
+          ))
+        }
+      </dl>
     </div>
   </section>
 
-  <!-- ==================== PROOF ==================== -->
-  <section class="section" id="proof">
+  <!-- ==================== ACT 3 — PROOF ==================== -->
+  <section class="section" id="proof" data-act="proof">
     <div class="wrap">
       <hr class="rule reveal" />
-      <header class="work__head">
-        <p class="eyebrow reveal">03 — Proof</p>
+      <header class="sect__head">
+        <p class="eyebrow reveal">02 — Proof</p>
         <h2 class="h2 reveal" style="--reveal-delay:80ms">Receipts.</h2>
       </header>
 
@@ -202,9 +214,9 @@ import leetcode from '../data/leetcode.json';
                 </div>
               </div>
               <div class="lc__bar" aria-hidden="true">
-                <span style={`width:${(leetcode.easy / leetcode.total) * 100}%`} data-d="e"></span>
-                <span style={`width:${(leetcode.medium / leetcode.total) * 100}%`} data-d="m"></span>
-                <span style={`width:${(leetcode.hard / leetcode.total) * 100}%`} data-d="h"></span>
+                <span style={`width:${(leetcode.easy / leetcode.total) * 100}%`} data-d="e" />
+                <span style={`width:${(leetcode.medium / leetcode.total) * 100}%`} data-d="m" />
+                <span style={`width:${(leetcode.hard / leetcode.total) * 100}%`} data-d="h" />
               </div>
               <p class="lc__note">
                 Problems solved. Updated automatically on every deploy
@@ -217,11 +229,78 @@ import leetcode from '../data/leetcode.json';
     </div>
   </section>
 
-  <!-- ==================== CONTACT ==================== -->
+  <!-- ==================== ACT 4 — CONTACT ==================== -->
   <Contact />
 
   <Motion />
 </Base>
+
+<script>
+  /**
+   * Drives the pinned manifesto panels from the same timeline as the stage,
+   * so copy and 3D are never a frame out of sync.
+   *
+   * Only one panel is readable at a time; the others are faded AND
+   * `visibility: hidden` so screen readers and tab order do not walk through
+   * three overlapping paragraphs.
+   */
+  import { onScroll, smooth, clamp } from '../lib/scroll';
+
+  const acts = Array.from(document.querySelectorAll<HTMLElement>('[data-act]'));
+  const section = document.querySelector<HTMLElement>('[data-pinned]');
+
+  if (section) {
+    const actIndex = acts.indexOf(section);
+    const sticky = section.querySelector<HTMLElement>('.manifesto__sticky')!;
+    const panels = Array.from(section.querySelectorAll<HTMLElement>('[data-panel]'));
+    const ticks = Array.from(section.querySelectorAll<HTMLElement>('[data-tick]'));
+    const n = panels.length;
+
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (reduced) {
+      // No pinning, no cross-fade: the panels simply stack and read as prose.
+      section.classList.add('is-static');
+    } else {
+      onScroll(({ t }) => {
+        // Local progress through this act, 0 to 1.
+        const p = clamp(t - actIndex);
+
+        // A triangular window per panel, centred on its slice. Clamping the
+        // read-head to [0.5, n-0.5] holds the first and last panels open at
+        // the edges instead of fading them to nothing before the act begins.
+        //
+        // The windows are sized so neighbours reach zero at the boundary
+        // between them: at no point are two paragraphs legible at once, which
+        // is what made the earlier version read as a double exposure.
+        const head = Math.min(Math.max(p * n, 0.5), n - 0.5);
+
+        // Fade the whole stack in at the start and out before the section
+        // releases, so the pinned copy never collides with what follows.
+        sticky.style.opacity = (
+          smooth(clamp(p / 0.05)) * (1 - smooth(clamp((p - 0.86) / 0.14)))
+        ).toFixed(3);
+
+        panels.forEach((panel, i) => {
+          const d = Math.abs(head - (i + 0.5));
+          const o = smooth(clamp(1 - (d - 0.16) / 0.3));
+
+          panel.style.opacity = o.toFixed(3);
+          panel.style.transform = `translate3d(0, ${((1 - o) * 30).toFixed(1)}px, 0)`;
+          panel.style.visibility = o < 0.02 ? 'hidden' : 'visible';
+          // Only the legible panel is exposed to assistive tech and tab order.
+          panel.setAttribute('aria-hidden', o < 0.5 ? 'true' : 'false');
+          panel.style.pointerEvents = o < 0.5 ? 'none' : 'auto';
+        });
+
+        ticks.forEach((tick, i) => {
+          const active = p >= i / n && p < (i + 1) / n;
+          tick.dataset.on = active ? 'true' : 'false';
+        });
+      });
+    }
+  }
+</script>
 
 <style>
   /* ==================== HERO ==================== */
@@ -232,33 +311,10 @@ import leetcode from '../data/leetcode.json';
     flex-direction: column;
     justify-content: flex-end;
     padding-block: 8rem 4rem;
-    overflow: hidden;
   }
-
-  /* Poster: pure CSS, so it costs zero bytes and stays sharp at any size.
-     On mobile this *is* the hero artwork. */
-  .hero__poster {
-    position: absolute;
-    top: 50%;
-    right: -6%;
-    transform: translateY(-58%);
-    width: min(52vw, 620px);
-    aspect-ratio: 1;
-    border-radius: 50%;
-    background:
-      radial-gradient(circle at 34% 30%, rgba(250, 250, 248, 0.5), transparent 42%),
-      radial-gradient(circle at 68% 72%, rgba(198, 80, 45, 0.55), transparent 55%),
-      radial-gradient(circle at 50% 50%, rgba(58, 32, 24, 0.9), rgba(8, 8, 10, 0.2) 70%);
-    filter: blur(46px);
-    opacity: 0.62;
-    z-index: 0;
-    pointer-events: none;
-  }
-
 
   .hero__inner {
     position: relative;
-    z-index: 2;
   }
 
   .hero__status {
@@ -282,7 +338,6 @@ import leetcode from '../data/leetcode.json';
     background: var(--ember);
     display: inline-block;
     flex: none;
-    box-shadow: 0 0 0 0 var(--ember-soft);
     animation: pulse 2.6s var(--ease) infinite;
   }
   @keyframes pulse {
@@ -306,7 +361,6 @@ import leetcode from '../data/leetcode.json';
     border-radius: 50%;
     background: var(--ember);
     margin-left: 0.06em;
-    vertical-align: baseline;
   }
 
   .hero__foot {
@@ -336,7 +390,6 @@ import leetcode from '../data/leetcode.json';
     position: absolute;
     bottom: 2rem;
     right: var(--gutter);
-    z-index: 2;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -372,73 +425,101 @@ import leetcode from '../data/leetcode.json';
       gap: 1rem;
     }
     .hero__scroll { display: none; }
-    .hero__poster {
-      right: -25%;
-      width: 90vw;
-      opacity: 0.45;
-    }
   }
 
-  /* ==================== INDEX ==================== */
-  .idx {
+  /* ==================== MANIFESTO (pinned) ==================== */
+  .manifesto {
+    /* Tall enough to give each panel real scroll distance. Three panels want
+       roughly one viewport each, plus a little lead-in and lead-out. */
+    height: 360vh;
+    position: relative;
+  }
+
+  .manifesto__sticky {
+    position: sticky;
+    top: 0;
+    height: 100svh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  /* Panels stack in the same grid cell and cross-fade. */
+  .manifesto__sticky .wrap {
     display: grid;
-    grid-template-columns: minmax(0, 12rem) minmax(0, 1fr);
-    gap: clamp(1.5rem, 4vw, 4rem);
-    padding-top: 3rem;
+  }
+  .panel {
+    grid-area: 1 / 1;
+    max-width: 22ch;
+    will-change: opacity, transform;
   }
 
-  .idx__body {
-    display: grid;
-    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
-    gap: clamp(2rem, 5vw, 5rem);
+  .panel__kicker {
+    margin-bottom: 1.5rem;
   }
-
-  .idx__lede .prose {
-    margin-top: 2rem;
+  .panel__line {
+    margin-bottom: 1.75rem;
   }
-
-  .ilink {
-    color: var(--paper);
-    border-bottom: 1px solid var(--rule-strong);
-    transition:
-      border-color var(--dur-fast) var(--ease),
-      color var(--dur-fast) var(--ease);
-  }
-  .ilink:hover {
-    color: var(--ember);
-    border-bottom-color: var(--ember);
-  }
-
-  .stack__row {
-    display: grid;
-    grid-template-columns: 7rem 1fr;
-    gap: 1rem;
-    padding-block: 0.9rem;
-    border-bottom: 1px solid var(--rule);
-    align-items: baseline;
-  }
-  .stack__row:first-child {
-    border-top: 1px solid var(--rule);
-  }
-  .stack__row dd {
-    font-size: var(--t-small);
+  .panel__body {
+    max-width: 46ch;
     color: var(--muted);
-    line-height: 1.7;
+    font-size: clamp(0.98rem, 1.15vw, 1.12rem);
+    line-height: 1.65;
   }
 
-  @media (max-width: 1000px) {
-    .idx,
-    .idx__body {
-      grid-template-columns: 1fr;
-    }
-    .idx__body { gap: 3rem; }
+  .manifesto__ticks {
+    position: absolute;
+    left: var(--gutter);
+    bottom: 3.5rem;
+    display: flex;
+    gap: 0.5rem;
   }
-  @media (max-width: 520px) {
-    .stack__row { grid-template-columns: 1fr; gap: 0.35rem; }
+  .manifesto__ticks span {
+    width: 34px;
+    height: 2px;
+    background: var(--rule-strong);
+    transition: background var(--dur-fast) var(--ease);
+  }
+  .manifesto__ticks span[data-on='true'] {
+    background: var(--ember);
   }
 
-  /* ==================== WORK ==================== */
-  .work__head {
+  /* Reduced motion, or no JS: unpin and let the panels read as prose. */
+  .manifesto.is-static,
+  html:not(.js) .manifesto {
+    height: auto;
+  }
+  .manifesto.is-static .manifesto__sticky,
+  html:not(.js) .manifesto .manifesto__sticky {
+    position: static;
+    height: auto;
+    padding-block: var(--section);
+  }
+  .manifesto.is-static .manifesto__sticky .wrap,
+  html:not(.js) .manifesto .manifesto__sticky .wrap {
+    display: block;
+  }
+  .manifesto.is-static .panel,
+  html:not(.js) .manifesto .panel {
+    max-width: var(--measure);
+  }
+  .manifesto.is-static .panel + .panel,
+  html:not(.js) .manifesto .panel + .panel {
+    margin-top: 3.5rem;
+  }
+  .manifesto.is-static .manifesto__ticks,
+  html:not(.js) .manifesto .manifesto__ticks {
+    display: none;
+  }
+
+  @media (max-width: 860px) {
+    .manifesto { height: 320vh; }
+    .panel { max-width: none; }
+    .panel__line { max-width: 14ch; }
+  }
+
+  /* ==================== SECTION HEADS ==================== */
+  .sect__head {
     padding-top: 3rem;
     margin-bottom: clamp(2.5rem, 7vh, 5rem);
     display: grid;
@@ -447,9 +528,10 @@ import leetcode from '../data/leetcode.json';
     align-items: start;
   }
   @media (max-width: 1000px) {
-    .work__head { grid-template-columns: 1fr; gap: 1.5rem; }
+    .sect__head { grid-template-columns: 1fr; gap: 1.5rem; }
   }
 
+  /* ==================== WORK ==================== */
   .work__list {
     list-style: none;
   }
@@ -468,8 +550,8 @@ import leetcode from '../data/leetcode.json';
     border-bottom: 1px solid var(--rule);
   }
 
-  /* A wash that wipes in from the left on hover — the row lights up
-     rather than lifting. Lifting cards is the template look. */
+  /* A wash that wipes in from the left on hover — the row lights up rather
+     than lifting. Lifting cards is the template look. */
   .proj::before {
     content: '';
     position: absolute;
@@ -480,24 +562,16 @@ import leetcode from '../data/leetcode.json';
     pointer-events: none;
   }
   .proj:hover::before,
-  .proj:focus-visible::before {
-    opacity: 1;
-  }
-  .proj:hover {
-    border-color: var(--rule-strong);
-  }
+  .proj:focus-visible::before { opacity: 1; }
+  .proj:hover { border-color: var(--rule-strong); }
 
-  .proj__index {
-    padding-top: 0.4rem;
-  }
+  .proj__index { padding-top: 0.4rem; }
 
   .proj__title {
     display: block;
     transition: transform var(--dur-fast) var(--ease);
   }
-  .proj:hover .proj__title {
-    transform: translateX(6px);
-  }
+  .proj:hover .proj__title { transform: translateX(6px); }
 
   .proj__summary {
     display: block;
@@ -544,16 +618,40 @@ import leetcode from '../data/leetcode.json';
   }
 
   @media (max-width: 720px) {
-    .proj {
-      grid-template-columns: 2.5rem minmax(0, 1fr);
-      gap: 1rem;
-    }
+    .proj { grid-template-columns: 2.5rem minmax(0, 1fr); gap: 1rem; }
     .proj__meta {
       grid-column: 2;
       justify-content: flex-start;
       gap: 1.5rem;
       padding-top: 0.75rem;
     }
+  }
+
+  /* ==================== STACK ==================== */
+  .stack {
+    margin-top: clamp(3rem, 8vh, 5rem);
+    columns: 2;
+    column-gap: clamp(2rem, 5vw, 4rem);
+  }
+  .stack__row {
+    display: grid;
+    grid-template-columns: 7rem 1fr;
+    gap: 1rem;
+    padding-block: 0.9rem;
+    border-bottom: 1px solid var(--rule);
+    align-items: baseline;
+    break-inside: avoid;
+  }
+  .stack__row dd {
+    font-size: var(--t-small);
+    color: var(--muted);
+    line-height: 1.7;
+  }
+  @media (max-width: 860px) {
+    .stack { columns: 1; }
+  }
+  @media (max-width: 520px) {
+    .stack__row { grid-template-columns: 1fr; gap: 0.35rem; }
   }
 
   /* ==================== PROOF ==================== */
@@ -570,13 +668,15 @@ import leetcode from '../data/leetcode.json';
     display: flex;
     flex-direction: column;
     height: 100%;
-    background: var(--ink);
+    /* Slightly translucent so the stage shows through — the cards sit in the
+       scene rather than on top of it. */
+    background: rgba(8, 8, 10, 0.72);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     padding: clamp(1.5rem, 3vw, 2.25rem);
     transition: background var(--dur-fast) var(--ease);
   }
-  a.proof__card:hover {
-    background: var(--ink-raised);
-  }
+  a.proof__card:hover { background: rgba(20, 20, 24, 0.85); }
 
   .proof__value {
     font-size: clamp(3rem, 6vw, 5rem);
@@ -590,10 +690,7 @@ import leetcode from '../data/leetcode.json';
     margin-left: 0.04em;
   }
 
-  .proof__label {
-    margin-top: 1.5rem;
-    font-size: 1rem;
-  }
+  .proof__label { margin-top: 1.5rem; font-size: 1rem; }
   .proof__detail {
     margin-top: 0.4rem;
     font-size: var(--t-small);
@@ -605,9 +702,7 @@ import leetcode from '../data/leetcode.json';
     color: var(--muted-dim);
     transition: color var(--dur-fast) var(--ease);
   }
-  a.proof__card:hover .proof__go {
-    color: var(--ember);
-  }
+  a.proof__card:hover .proof__go { color: var(--ember); }
 
   /* ---- LeetCode panel ---- */
   .lc {
@@ -615,6 +710,9 @@ import leetcode from '../data/leetcode.json';
     border: 1px solid var(--rule);
     border-top: 0;
     padding: clamp(1.5rem, 3vw, 2.25rem);
+    background: rgba(8, 8, 10, 0.72);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
   }
   .lc__head {
     display: flex;
@@ -642,27 +740,15 @@ import leetcode from '../data/leetcode.json';
     line-height: 0.85;
     grid-row: span 2;
   }
-  .lc__split {
-    display: flex;
-    gap: clamp(1.5rem, 4vw, 3rem);
-  }
-  .lc__seg {
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
-  }
+  .lc__split { display: flex; gap: clamp(1.5rem, 4vw, 3rem); }
+  .lc__seg { display: flex; flex-direction: column; gap: 0.2rem; }
   .lc__n {
     font-family: var(--mono);
     font-size: 1.35rem;
     font-weight: 500;
   }
 
-  .lc__bar {
-    display: flex;
-    height: 3px;
-    width: 100%;
-    overflow: hidden;
-  }
+  .lc__bar { display: flex; height: 3px; width: 100%; overflow: hidden; }
   .lc__bar span[data-d='e'] { background: var(--muted); }
   .lc__bar span[data-d='m'] { background: var(--paper); }
   .lc__bar span[data-d='h'] { background: var(--ember); }

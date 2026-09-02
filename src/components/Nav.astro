@@ -40,6 +40,7 @@ const items = [
       </ul>
     </nav>
   </div>
+  <div class="nav__progress" aria-hidden="true"><span data-progress></span></div>
 </header>
 
 <style>
@@ -62,6 +63,28 @@ const items = [
     backdrop-filter: blur(14px) saturate(140%);
     -webkit-backdrop-filter: blur(14px) saturate(140%);
     border-bottom-color: var(--rule);
+  }
+
+  .nav__progress {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    overflow: hidden;
+  }
+  .nav__progress span {
+    display: block;
+    height: 100%;
+    width: 100%;
+    background: var(--ember);
+    transform: scaleX(var(--p, 0));
+    transform-origin: left;
+    opacity: 0;
+    transition: opacity var(--dur-fast) var(--ease);
+  }
+  .nav.is-stuck .nav__progress span {
+    opacity: 1;
   }
 
   .nav__inner {
@@ -156,25 +179,18 @@ const items = [
 </style>
 
 <script>
-  // Adds the stuck background once scrolled. Passive listener, rAF-throttled —
-  // the old site ran unthrottled work on every scroll event.
+  // Reads the shared scroll timeline instead of adding a second listener.
+  // The old site ran unthrottled work on every scroll event; everything
+  // scroll-driven here shares one rAF loop.
+  import { onScroll } from '../lib/scroll';
+
   const nav = document.querySelector('[data-nav]');
+  const progress = document.querySelector<HTMLElement>('[data-progress]');
+
   if (nav) {
-    let ticking = false;
-    const update = () => {
+    onScroll(({ g }) => {
       nav.classList.toggle('is-stuck', window.scrollY > 24);
-      ticking = false;
-    };
-    window.addEventListener(
-      'scroll',
-      () => {
-        if (!ticking) {
-          ticking = true;
-          requestAnimationFrame(update);
-        }
-      },
-      { passive: true },
-    );
-    update();
+      progress?.style.setProperty('--p', g.toFixed(4));
+    });
   }
 </script>
